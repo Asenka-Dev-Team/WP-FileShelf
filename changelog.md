@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Fixed activation fatal error on PHP 8.0 and PHP 8.1 caused by use of the PHP 8.2-only standalone `true` return type.
+- Updated the affected return declaration to remain compatible with the plugin's stated PHP 8.0+ requirement.
+
 ## 0.1.0
 
 Initial development release.

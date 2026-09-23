@@ -268,7 +268,7 @@ final class WFS_Admin {
         check_ajax_referer( 'wfs_admin', 'nonce' );
     }
 
-    private static function validate_link_slug( string $slug ): true|WP_Error {
+    private static function validate_link_slug( string $slug ): bool|WP_Error {
         $reserved = array(
             WFS_UPLOAD_ROUTE,
             WFS_STORAGE_DIRNAME,
