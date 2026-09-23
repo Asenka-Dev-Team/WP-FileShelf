@@ -196,14 +196,25 @@ final class WFS_Admin {
     public static function ajax_save_settings(): void {
         self::ajax_guard();
 
-        $slug = isset( $_POST['wfs_link_slug'] ) ? sanitize_title( wp_unslash( $_POST['wfs_link_slug'] ) ) : '';
+        $slug        = isset( $_POST['wfs_link_slug'] ) ? sanitize_title( wp_unslash( $_POST['wfs_link_slug'] ) ) : '';
+        $upload_slug = isset( $_POST['wfs_upload_slug'] ) ? sanitize_title( wp_unslash( $_POST['wfs_upload_slug'] ) ) : '';
+
         if ( '' === $slug ) {
             wp_send_json_error( array( 'message' => __( 'Please enter a public file link path.', 'wp-fileshelf' ) ), 400 );
         }
 
-        $slug_error = self::validate_link_slug( $slug );
+        if ( '' === $upload_slug ) {
+            wp_send_json_error( array( 'message' => __( 'Please enter a staff upload page path.', 'wp-fileshelf' ) ), 400 );
+        }
+
+        $slug_error = self::validate_link_slug( $slug, $upload_slug );
         if ( is_wp_error( $slug_error ) ) {
             wp_send_json_error( array( 'message' => $slug_error->get_error_message() ), 400 );
+        }
+
+        $upload_slug_error = self::validate_upload_slug( $upload_slug, $slug );
+        if ( is_wp_error( $upload_slug_error ) ) {
+            wp_send_json_error( array( 'message' => $upload_slug_error->get_error_message() ), 400 );
         }
 
         $clear_password = ! empty( $_POST['wfs_clear_password'] );
@@ -212,19 +223,34 @@ final class WFS_Admin {
             wp_send_json_error( array( 'message' => __( 'Use an upload password with at least 8 characters.', 'wp-fileshelf' ) ), 400 );
         }
 
-        $old_slug = WFS_Router::link_slug();
+        $old_slug        = WFS_Router::link_slug();
+        $old_upload_slug = WFS_Router::upload_slug();
         update_option( 'wfs_link_slug', $slug, false );
+        update_option( 'wfs_upload_slug', $upload_slug, false );
 
         if ( $clear_password ) {
-            delete_option( 'wfs_upload_password_hash' );
+            WFS_Frontend::clear_password();
         } elseif ( '' !== $new_password ) {
-            update_option( 'wfs_upload_password_hash', wp_hash_password( $new_password ), false );
+            $current_hash     = (string) get_option( 'wfs_upload_password_hash', '' );
+            $current_viewable = WFS_Frontend::viewable_password();
+            $same_password    = '' !== $current_hash
+                && '' !== $current_viewable
+                && hash_equals( $current_viewable, $new_password )
+                && wp_check_password( $new_password, $current_hash );
+
+            // Do not generate a fresh hash on every unrelated Settings save.
+            // Older hash-only passwords intentionally pass through here once so
+            // v0.1.4 can create their encrypted admin-viewable copy.
+            if ( ! $same_password ) {
+                WFS_Frontend::save_password( $new_password );
+            }
         }
 
-        if ( $old_slug !== $slug ) {
+        if ( $old_slug !== $slug || $old_upload_slug !== $upload_slug ) {
             WFS_Router::register_rewrite_rules();
             flush_rewrite_rules( false );
             update_option( 'wfs_rewrite_slug', $slug, false );
+            update_option( 'wfs_rewrite_upload_slug', $upload_slug, false );
             update_option( 'wfs_rewrite_version', WFS_VERSION, false );
         }
 
@@ -275,9 +301,8 @@ final class WFS_Admin {
         check_ajax_referer( 'wfs_admin', 'nonce' );
     }
 
-    private static function validate_link_slug( string $slug ): bool|WP_Error {
+    private static function validate_link_slug( string $slug, string $upload_slug ): bool|WP_Error {
         $reserved = array(
-            WFS_UPLOAD_ROUTE,
             WFS_STORAGE_DIRNAME,
             'wp-admin',
             'wp-content',
@@ -285,15 +310,39 @@ final class WFS_Admin {
             'wp-json',
         );
 
-        if ( in_array( $slug, $reserved, true ) ) {
-            return new WP_Error( 'wfs_reserved_slug', __( 'That link path is reserved by WordPress or WP FileShelf. Please choose another.', 'wp-fileshelf' ) );
+        if ( in_array( $slug, $reserved, true ) || $slug === $upload_slug ) {
+            return new WP_Error( 'wfs_reserved_slug', __( 'That public file link path is reserved or conflicts with the staff upload page. Please choose another.', 'wp-fileshelf' ) );
         }
 
         $old_slug = WFS_Router::link_slug();
         if ( $slug !== $old_slug && function_exists( 'url_to_postid' ) ) {
             $post_id = url_to_postid( home_url( '/' . $slug . '/' ) );
             if ( $post_id > 0 ) {
-                return new WP_Error( 'wfs_slug_conflict', __( 'A WordPress page or post already uses that path. Please choose another.', 'wp-fileshelf' ) );
+                return new WP_Error( 'wfs_slug_conflict', __( 'A WordPress page or post already uses that public file path. Please choose another.', 'wp-fileshelf' ) );
+            }
+        }
+
+        return true;
+    }
+
+    private static function validate_upload_slug( string $slug, string $link_slug ): bool|WP_Error {
+        $reserved = array(
+            WFS_STORAGE_DIRNAME,
+            'wp-admin',
+            'wp-content',
+            'wp-includes',
+            'wp-json',
+        );
+
+        if ( in_array( $slug, $reserved, true ) || $slug === $link_slug ) {
+            return new WP_Error( 'wfs_reserved_upload_slug', __( 'That staff upload page path is reserved or conflicts with the public file link path. Please choose another.', 'wp-fileshelf' ) );
+        }
+
+        $old_slug = WFS_Router::upload_slug();
+        if ( $slug !== $old_slug && function_exists( 'url_to_postid' ) ) {
+            $post_id = url_to_postid( home_url( '/' . $slug . '/' ) );
+            if ( $post_id > 0 ) {
+                return new WP_Error( 'wfs_upload_slug_conflict', __( 'A WordPress page or post already uses that staff upload page path. Please choose another.', 'wp-fileshelf' ) );
             }
         }
 
@@ -631,11 +680,11 @@ final class WFS_Admin {
                 </div>
             </div>
 
-            <form class="wfs-upload-form wfs-upload-inline-form" enctype="multipart/form-data">
+            <form class="wfs-upload-form wfs-upload-inline-form" enctype="multipart/form-data" autocomplete="off" data-lpignore="true">
                 <input type="hidden" name="action" value="wfs_upload_file">
                 <div class="wfs-field-group">
                     <label for="wfs-admin-file"><?php esc_html_e( 'File', 'wp-fileshelf' ); ?></label>
-                    <input id="wfs-admin-file" type="file" name="file" required>
+                    <input id="wfs-admin-file" type="file" name="file" required autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
                     <?php if ( '' !== $allowed ) : ?>
                         <p class="description"><?php echo esc_html( sprintf( __( 'Allowed: %s', 'wp-fileshelf' ), $allowed ) ); ?></p>
                     <?php else : ?>
@@ -644,7 +693,7 @@ final class WFS_Admin {
                 </div>
                 <div class="wfs-field-group">
                     <label for="wfs-admin-display-name"><?php esc_html_e( 'Name / Description', 'wp-fileshelf' ); ?></label>
-                    <input id="wfs-admin-display-name" type="text" name="display_name" maxlength="255" placeholder="<?php echo esc_attr__( 'Optional internal description', 'wp-fileshelf' ); ?>">
+                    <input id="wfs-admin-display-name" type="text" name="display_name" maxlength="255" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" placeholder="<?php echo esc_attr__( 'Optional internal description', 'wp-fileshelf' ); ?>">
                 </div>
                 <div class="wfs-form-actions">
                     <button type="submit" class="button button-primary"><?php esc_html_e( 'Upload File', 'wp-fileshelf' ); ?></button>
@@ -655,14 +704,16 @@ final class WFS_Admin {
     }
 
     private static function render_settings_tab(): void {
-        $slug         = WFS_Router::link_slug();
-        $has_password = WFS_Frontend::password_is_configured();
-        $diagnostics  = WFS_Updater::get_diagnostics();
+        $slug           = WFS_Router::link_slug();
+        $upload_slug    = WFS_Router::upload_slug();
+        $has_password   = WFS_Frontend::password_is_configured();
+        $saved_password = WFS_Frontend::viewable_password();
+        $diagnostics    = WFS_Updater::get_diagnostics();
         $update_ready = ! empty( $diagnostics['update_available'] ) && current_user_can( 'update_plugins' )
             ? WFS_Updater::prime_update_transient()
             : false;
         $example      = home_url( '/' . $slug . '/nj.pdf' );
-        $upload_url   = home_url( '/' . WFS_UPLOAD_ROUTE . '/' );
+        $upload_url   = home_url( '/' . $upload_slug . '/' );
         ?>
         <section class="wfs-card">
             <div class="wfs-card-heading">
@@ -678,19 +729,39 @@ final class WFS_Admin {
                     <div class="wfs-setting-panel">
                         <h3><?php esc_html_e( 'Staff Upload Page', 'wp-fileshelf' ); ?></h3>
                         <p><?php esc_html_e( 'Anyone with this URL and the configured password can upload allowed file types.', 'wp-fileshelf' ); ?></p>
+
+                        <div class="wfs-field-group">
+                            <label for="wfs-upload-slug"><?php esc_html_e( 'Upload page path', 'wp-fileshelf' ); ?></label>
+                            <div class="wfs-slug-control">
+                                <span><?php echo esc_html( trailingslashit( home_url( '/' ) ) ); ?></span>
+                                <input id="wfs-upload-slug" type="text" name="wfs_upload_slug" value="<?php echo esc_attr( $upload_slug ); ?>" required pattern="[A-Za-z0-9_-]+" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
+                                <span>/</span>
+                            </div>
+                            <p class="description"><?php esc_html_e( 'Default: wpfileshelf. Saving a new path updates the staff upload page without changing file links.', 'wp-fileshelf' ); ?></p>
+                        </div>
+
                         <div class="wfs-copy-field">
-                            <input type="text" readonly value="<?php echo esc_attr( $upload_url ); ?>">
+                            <input type="text" readonly value="<?php echo esc_attr( $upload_url ); ?>" autocomplete="off">
                             <button type="button" class="button" data-wfs-copy="<?php echo esc_attr( $upload_url ); ?>"><?php esc_html_e( 'Copy', 'wp-fileshelf' ); ?></button>
+                            <a class="button" href="<?php echo esc_url( $upload_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Page', 'wp-fileshelf' ); ?></a>
                         </div>
 
                         <div class="wfs-field-group">
                             <label for="wfs-upload-password"><?php esc_html_e( 'Upload password', 'wp-fileshelf' ); ?></label>
                             <div class="wfs-password-control">
-                                <input id="wfs-upload-password" type="password" name="wfs_upload_password" minlength="8" autocomplete="new-password" placeholder="<?php echo esc_attr( $has_password ? __( 'Leave blank to keep current password', 'wp-fileshelf' ) : __( 'Set an upload password', 'wp-fileshelf' ) ); ?>">
+                                <input id="wfs-upload-password" type="password" name="wfs_upload_password" minlength="8" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" value="<?php echo esc_attr( $saved_password ); ?>" placeholder="<?php echo esc_attr( $has_password ? __( 'Re-enter password to change it', 'wp-fileshelf' ) : __( 'Set an upload password', 'wp-fileshelf' ) ); ?>">
                                 <button type="button" class="button wfs-password-toggle" data-wfs-password-toggle="wfs-upload-password" aria-pressed="false"><?php esc_html_e( 'View', 'wp-fileshelf' ); ?></button>
                             </div>
                             <p class="description">
-                                <?php echo $has_password ? esc_html__( 'A password is currently set. For security, saved passwords are hashed and cannot be displayed. Use View/Hide while entering a new password.', 'wp-fileshelf' ) : esc_html__( 'No password is currently set, so the public upload form is locked. Use View/Hide while entering a password if needed.', 'wp-fileshelf' ); ?>
+                                <?php
+                                if ( '' !== $saved_password ) {
+                                    esc_html_e( 'The saved password is loaded here for administrators. Use View/Hide when you need to check or share it with staff.', 'wp-fileshelf' );
+                                } elseif ( $has_password ) {
+                                    esc_html_e( 'A password is already set, but older FileShelf versions stored only a one-way hash. Re-enter and save it once to make it viewable here.', 'wp-fileshelf' );
+                                } else {
+                                    esc_html_e( 'No password is currently set, so the staff upload form is locked.', 'wp-fileshelf' );
+                                }
+                                ?>
                             </p>
                         </div>
                         <?php if ( $has_password ) : ?>

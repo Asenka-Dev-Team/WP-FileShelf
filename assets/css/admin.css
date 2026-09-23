@@ -787,3 +787,13 @@
     align-self: flex-start;
   }
 }
+
+/* v0.1.4 upload-page controls */
+.wfs-copy-field {
+  flex-wrap: wrap;
+}
+
+.wfs-copy-field input {
+  flex: 1 1 320px;
+  min-width: 220px;
+}

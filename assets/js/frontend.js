@@ -9,6 +9,9 @@
     const modal = document.getElementById('wfs-replace-modal');
     const modalMessage = document.getElementById('wfs-replace-message');
     const confirmReplace = document.getElementById('wfs-confirm-replace');
+    const uploadResult = document.getElementById('wfs-upload-result');
+    const uploadResultUrl = document.getElementById('wfs-upload-result-url');
+    const uploadCopyButton = document.getElementById('wfs-upload-copy');
     let pendingUploadForm = null;
 
     document.querySelectorAll('[data-wfs-password-toggle]').forEach(function (button) {
@@ -71,6 +74,49 @@
         return json.data || {};
     }
 
+    async function copyText(text, button) {
+        if (!text) return;
+
+        const done = function () {
+            if (!button) return;
+            const original = button.textContent;
+            button.textContent = config.strings.copied || 'Copied!';
+            window.setTimeout(function () {
+                if (document.body.contains(button)) button.textContent = original || config.strings.copyLink || 'Copy Link';
+            }, 1200);
+        };
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                done();
+                return;
+            }
+        } catch (error) {
+            // Fall through to the legacy copy path.
+        }
+
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.setAttribute('readonly', 'readonly');
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        try {
+            document.execCommand('copy');
+            done();
+        } finally {
+            document.body.removeChild(temp);
+        }
+    }
+
+    function showUploadResult(url) {
+        if (!uploadResult || !uploadResultUrl || !url) return;
+        uploadResultUrl.value = url;
+        uploadResult.hidden = false;
+    }
+
     function openReplaceModal(payload) {
         if (!modal) return;
         const filename = payload && payload.filename ? payload.filename : 'This file';
@@ -91,6 +137,15 @@
     if (loginForm) {
         loginForm.addEventListener('submit', async function (event) {
             event.preventDefault();
+            const passwordInput = loginForm.querySelector('input[name="password"]');
+            const passwordToggle = loginForm.querySelector('[data-wfs-password-toggle]');
+            if (passwordInput && passwordInput.type !== 'password') {
+                passwordInput.type = 'password';
+                if (passwordToggle) {
+                    passwordToggle.setAttribute('aria-pressed', 'false');
+                    passwordToggle.textContent = config.strings.view || 'View';
+                }
+            }
             const button = loginForm.querySelector('button[type="submit"]');
             const data = new FormData(loginForm);
             setButtonBusy(button, true, config.strings.working);
@@ -117,6 +172,7 @@
             pendingUploadForm.reset();
             pendingUploadForm = null;
             showNotice(result.message || (replaceExisting ? config.strings.replaced : config.strings.uploaded), 'success');
+            showUploadResult(result.url || '');
         } catch (error) {
             setButtonBusy(button, false);
             if (error.payload && error.payload.code === 'duplicate' && !replaceExisting) {
@@ -153,6 +209,12 @@
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && modal && !modal.hidden) closeReplaceModal();
     });
+
+    if (uploadCopyButton) {
+        uploadCopyButton.addEventListener('click', function () {
+            copyText(uploadResultUrl ? uploadResultUrl.value : '', uploadCopyButton);
+        });
+    }
 
     if (logoutButton) {
         logoutButton.addEventListener('click', async function () {

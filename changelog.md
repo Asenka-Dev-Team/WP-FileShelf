@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.4
+
+- Added a configurable staff upload page path, with `wpfileshelf` as the default.
+- Added an **Open Page** button beside the staff upload URL copy control.
+- Added admin-viewable saved upload passwords using an encrypted copy while keeping WordPress password hashing for authentication.
+- Added a one-time migration note for passwords created by older versions, which cannot be recovered from their existing one-way hashes.
+- Added View/Hide save handling so a visible admin password field is returned to password mode before settings are submitted.
+- Disabled browser/password-manager autocomplete hints on FileShelf password and upload-page fields.
+- Added a post-upload result on the staff uploader showing the new public file URL with a **Copy Link** button.
+- Updated rewrite tracking and uninstall cleanup for the configurable upload-page path and encrypted password option.
+
 ## 0.1.3
 - Improved the Plugin Updates panel to clearly highlight available GitHub releases.
 - Added one-click plugin updating from FileShelf Settings using WordPress' native plugin updater.

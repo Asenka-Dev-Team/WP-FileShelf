@@ -288,3 +288,64 @@ body.wfs-modal-open {
   background: #f8fafc;
   border-color: #98a2b3;
 }
+
+.wfs-front-upload-result {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #b7dfc2;
+  border-radius: 9px;
+  background: #f5fbf6;
+}
+
+.wfs-front-upload-result label {
+  display: block;
+  margin-bottom: 7px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.wfs-front-copy-field {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.wfs-front-copy-field input {
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #cfd5dd;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+}
+
+.wfs-front-copy-field button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid #cfd5dd;
+  border-radius: 8px;
+  background: #fff;
+  color: #344054;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.wfs-front-copy-field button:hover {
+  background: #f8fafc;
+  border-color: #98a2b3;
+}
+
+@media (max-width: 560px) {
+  .wfs-front-copy-field {
+    flex-direction: column;
+  }
+
+  .wfs-front-copy-field button {
+    width: 100%;
+  }
+}

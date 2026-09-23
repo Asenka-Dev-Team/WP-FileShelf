@@ -263,6 +263,15 @@
             .text(reveal ? (WFSAdmin.strings.hide || 'Hide') : (WFSAdmin.strings.view || 'View'));
     });
 
+    function hideSettingsPasswordFields($form) {
+        $form.find('input[name="wfs_upload_password"]').each(function () {
+            this.type = 'password';
+            const id = this.id || '';
+            if (!id) return;
+            $form.find('[data-wfs-password-toggle="' + id + '"]').attr('aria-pressed', 'false').text(WFSAdmin.strings.view || 'View');
+        });
+    }
+
     $(document).on('click', '[data-wfs-apply-update]', function () {
         const $button = $(this);
         const originalHtml = $button.html();
@@ -309,9 +318,16 @@
 
     $(document).on('submit', '.wfs-settings-form, .wfs-advanced-form, .wfs-update-check-form', function (event) {
         event.preventDefault();
+        const $form = $(this);
+        if ($form.hasClass('wfs-settings-form')) {
+            // Always return password inputs to their hidden state before the
+            // FormData snapshot is created. This avoids browser/password-manager
+            // oddities when an administrator saves while the password is visible.
+            hideSettingsPasswordFields($form);
+        }
         const formData = new FormData(this);
-        const $button = $(this).find('button[type="submit"]').first();
-        const isUpdate = $(this).hasClass('wfs-update-check-form');
+        const $button = $form.find('button[type="submit"]').first();
+        const isUpdate = $form.hasClass('wfs-update-check-form');
         request(formData, {
             button: $button,
             busyText: isUpdate ? WFSAdmin.strings.checking : WFSAdmin.strings.saving,

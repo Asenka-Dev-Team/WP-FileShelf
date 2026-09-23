@@ -17,9 +17,15 @@ final class WFS_Router {
         return '' !== $slug ? $slug : 'fileshelf';
     }
 
+    public static function upload_slug(): string {
+        $slug = sanitize_title( (string) get_option( 'wfs_upload_slug', WFS_UPLOAD_ROUTE ) );
+        return '' !== $slug ? $slug : WFS_UPLOAD_ROUTE;
+    }
+
     public static function register_rewrite_rules(): void {
+        $upload_slug = self::upload_slug();
         add_rewrite_rule(
-            '^' . preg_quote( WFS_UPLOAD_ROUTE, '#' ) . '/?$',
+            '^' . preg_quote( $upload_slug, '#' ) . '/?$',
             'index.php?wfs_upload_page=1',
             'top'
         );
@@ -55,11 +61,13 @@ final class WFS_Router {
     }
 
     public static function maybe_refresh_rewrite_rules(): void {
-        $saved_version = (string) get_option( 'wfs_rewrite_version', '' );
-        $saved_slug    = (string) get_option( 'wfs_rewrite_slug', '' );
-        $current_slug  = self::link_slug();
+        $saved_version     = (string) get_option( 'wfs_rewrite_version', '' );
+        $saved_slug        = (string) get_option( 'wfs_rewrite_slug', '' );
+        $saved_upload_slug = (string) get_option( 'wfs_rewrite_upload_slug', '' );
+        $current_slug      = self::link_slug();
+        $current_upload    = self::upload_slug();
 
-        if ( WFS_VERSION === $saved_version && $current_slug === $saved_slug ) {
+        if ( WFS_VERSION === $saved_version && $current_slug === $saved_slug && $current_upload === $saved_upload_slug ) {
             return;
         }
 
@@ -67,5 +75,6 @@ final class WFS_Router {
         flush_rewrite_rules( false );
         update_option( 'wfs_rewrite_version', WFS_VERSION, false );
         update_option( 'wfs_rewrite_slug', $current_slug, false );
+        update_option( 'wfs_rewrite_upload_slug', $current_upload, false );
     }
 }

@@ -3,7 +3,7 @@
  * Plugin Name: WP FileShelf
  * Plugin URI: https://asenka.com/
  * Description: Manage a private staff-uploaded file shelf with stable public file URLs outside the WordPress Media Library.
- * Version: 0.1.3
+ * Version: 0.1.4
  * Author: Asenka Interactive
  * Author URI: https://asenka.com/
  * Text Domain: wp-fileshelf
@@ -18,13 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'WFS_VERSION', '0.1.3' );
+define( 'WFS_VERSION', '0.1.4' );
 define( 'WFS_FILE', __FILE__ );
 define( 'WFS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WFS_URL', plugin_dir_url( __FILE__ ) );
 define( 'WFS_GITHUB_REPOSITORY', 'Asenka-Dev-Team/WP-FileShelf' );
 define( 'WFS_STORAGE_DIRNAME', 'wp-fileshelf-uploads' );
-define( 'WFS_UPLOAD_ROUTE', 'wpfileshelf' );
+define( 'WFS_UPLOAD_ROUTE', 'wpfileshelf' ); // Default staff upload page slug.
 
 require_once WFS_PATH . 'includes/class-wfs-db.php';
 require_once WFS_PATH . 'includes/class-wfs-files.php';
@@ -64,6 +64,10 @@ final class WP_FileShelf {
             add_option( 'wfs_link_slug', 'fileshelf', '', false );
         }
 
+        if ( false === get_option( 'wfs_upload_slug', false ) ) {
+            add_option( 'wfs_upload_slug', WFS_UPLOAD_ROUTE, '', false );
+        }
+
         if ( false === get_option( 'wfs_allowed_mime_keys', false ) ) {
             add_option( 'wfs_allowed_mime_keys', WFS_Files::default_allowed_mime_keys(), '', false );
         }
@@ -76,6 +80,7 @@ final class WP_FileShelf {
         flush_rewrite_rules();
         update_option( 'wfs_rewrite_version', WFS_VERSION, false );
         update_option( 'wfs_rewrite_slug', WFS_Router::link_slug(), false );
+        update_option( 'wfs_rewrite_upload_slug', WFS_Router::upload_slug(), false );
     }
 
     public static function deactivate(): void {

@@ -13,7 +13,7 @@ WP FileShelf gives a WordPress site a simple document shelf outside the normal M
 - Store managed files outside the normal WordPress Media Library.
 - Give files stable, configurable public URLs such as `https://example.com/hr-docs/nj.pdf`.
 - Let administrators upload, search, sort, rename, replace, delete, and copy file links from one screen.
-- Give staff a password-protected uploader at `/wpfileshelf/` without requiring a WordPress account.
+- Give staff a password-protected uploader at a configurable URL (default: `/wpfileshelf/`) without requiring a WordPress account.
 - Detect duplicate filenames and let authenticated staff intentionally replace the existing file.
 - Keep the existing filename and public URL when a file is replaced.
 - Limit uploads to file types selected under **Advanced**.
@@ -25,7 +25,7 @@ WP FileShelf gives a WordPress site a simple document shelf outside the normal M
 2. In WordPress, go to **Plugins → Add New Plugin → Upload Plugin**.
 3. Upload the ZIP, install it, and activate **WP FileShelf**.
 4. Open **WP FileShelf → Settings**.
-5. Set the staff upload password and public file link path.
+5. Set the staff upload page path, upload password, and public file link path.
 6. Open **Advanced** and choose which file types can be uploaded.
 7. Open **Files** to upload and manage documents.
 
@@ -64,17 +64,19 @@ The replacement must use the same file extension as the existing FileShelf file.
 
 ## Staff Upload Page
 
-The front-end uploader is always available at:
+The front-end uploader uses a configurable page path under **WP FileShelf → Settings**. The default is:
 
 ```text
 https://example.com/wpfileshelf/
 ```
 
-It is locked until an administrator sets an upload password under **WP FileShelf → Settings**.
+Administrators can change `wpfileshelf` to another unused path and can copy or open the current staff upload page directly from Settings. Changing the upload page path does not change public file links.
 
-Anyone who has the URL and password can upload the file types enabled under **Advanced**. A successful login creates a signed HttpOnly session cookie for up to eight hours.
+The page is locked until an administrator sets an upload password. Anyone who has the URL and password can upload the file types enabled under **Advanced**. A successful login creates a signed HttpOnly session cookie for up to eight hours.
 
-Both the WordPress admin password field and the front-end login field include **View / Hide** controls while a password is being typed. Saved passwords are hashed by WordPress and are never stored in a recoverable form, so an existing saved password cannot be displayed later.
+Both the WordPress admin password field and the front-end login field include **View / Hide** controls. FileShelf continues to use a one-way WordPress password hash for login verification and also stores an encrypted admin-viewable copy so an administrator can check or share the current staff password later. Passwords created before v0.1.4 only have the older one-way hash, so they must be re-entered and saved once before they can be viewed in Settings.
+
+After a successful staff upload or replacement, the page shows the resulting public file URL and a **Copy Link** button.
 
 ### Duplicate filenames
 
@@ -128,7 +130,7 @@ Versions before v0.1.3 stored files at the WordPress root in `/wp-fileshelf-uplo
 
 Open **WP FileShelf → Advanced** to choose the allowed upload types.
 
-The list is built from WordPress's supported MIME types instead of maintaining a separate hard-coded list. The selected types apply to both the admin uploader and `/wpfileshelf/`.
+The list is built from WordPress's supported MIME types instead of maintaining a separate hard-coded list. The selected types apply to both the admin uploader and the configured staff upload page.
 
 PDF is enabled by default on a new installation.
 
@@ -191,7 +193,7 @@ For a normal release:
 1. Update the plugin version in `wp-fileshelf.php`.
 2. Update `changelog.md`.
 3. Commit and push the release code.
-4. Create a Git tag such as `v0.1.3`.
+4. Create a Git tag such as `v0.1.4`.
 5. Publish a normal GitHub Release for that tag.
 
 WP FileShelf's updater ignores draft and prerelease releases.
