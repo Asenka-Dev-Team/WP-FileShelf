@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.1.3
+- Improved the Plugin Updates panel to clearly highlight available GitHub releases.
+- Added one-click plugin updating from FileShelf Settings using WordPress' native plugin updater.
 
 - Moved FileShelf physical storage from the WordPress root to `WP_CONTENT_DIR/wp-fileshelf-uploads/`.
 - Kept FileShelf storage separate from the normal WordPress Media Library uploads directory.

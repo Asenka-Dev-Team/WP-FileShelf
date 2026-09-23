@@ -60,6 +60,10 @@ final class WFS_Updater {
             return $transient;
         }
 
+        if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) {
+            $transient->response = array();
+        }
+
         $transient->response[ self::$plugin_basename ] = (object) array(
             'id'           => self::repository_url(),
             'slug'         => 'wp-fileshelf',
@@ -156,6 +160,32 @@ final class WFS_Updater {
             'update_available'  => '' !== $latest_version && version_compare( WFS_VERSION, $latest_version, '<' ),
             'cache_ttl'         => self::CACHE_TTL,
         );
+    }
+
+    /**
+     * Ensure WordPress' native plugin-update transient contains the FileShelf update.
+     *
+     * This lets the Settings screen hand installation off to WordPress' own
+     * update-plugin AJAX action rather than implementing a second upgrader.
+     */
+    public static function prime_update_transient(): bool {
+        if ( ! current_user_can( 'update_plugins' ) ) {
+            return false;
+        }
+
+        $transient = get_site_transient( 'update_plugins' );
+        if ( ! is_object( $transient ) ) {
+            $transient = new stdClass();
+        }
+
+        if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) {
+            $transient->response = array();
+        }
+
+        $transient = self::check_for_update( $transient );
+        set_site_transient( 'update_plugins', $transient );
+
+        return isset( $transient->response[ self::$plugin_basename ] );
     }
 
     public static function releases_url(): string {

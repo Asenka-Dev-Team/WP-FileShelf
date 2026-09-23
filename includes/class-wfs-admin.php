@@ -66,13 +66,18 @@ final class WFS_Admin {
             array(
                 'ajaxUrl' => admin_url( 'admin-ajax.php' ),
                 'pageUrl' => admin_url( 'admin.php?page=' . self::PAGE_SLUG ),
-                'nonce'   => wp_create_nonce( 'wfs_admin' ),
-                'strings' => array(
+                'nonce'          => wp_create_nonce( 'wfs_admin' ),
+                'updateNonce'    => wp_create_nonce( 'updates' ),
+                'pluginBasename' => plugin_basename( WFS_FILE ),
+                'pluginSlug'     => 'wp-fileshelf',
+                'strings'        => array(
                     'loading'       => __( 'Loading…', 'wp-fileshelf' ),
                     'saving'        => __( 'Saving…', 'wp-fileshelf' ),
                     'uploading'     => __( 'Uploading…', 'wp-fileshelf' ),
                     'deleting'      => __( 'Deleting…', 'wp-fileshelf' ),
                     'checking'      => __( 'Checking…', 'wp-fileshelf' ),
+                    'updating'      => __( 'Updating…', 'wp-fileshelf' ),
+                    'updateDone'    => __( 'Update installed. Reloading…', 'wp-fileshelf' ),
                     'copied'        => __( 'Copied!', 'wp-fileshelf' ),
                     'view'          => __( 'View', 'wp-fileshelf' ),
                     'hide'          => __( 'Hide', 'wp-fileshelf' ),
@@ -653,6 +658,9 @@ final class WFS_Admin {
         $slug         = WFS_Router::link_slug();
         $has_password = WFS_Frontend::password_is_configured();
         $diagnostics  = WFS_Updater::get_diagnostics();
+        $update_ready = ! empty( $diagnostics['update_available'] ) && current_user_can( 'update_plugins' )
+            ? WFS_Updater::prime_update_transient()
+            : false;
         $example      = home_url( '/' . $slug . '/nj.pdf' );
         $upload_url   = home_url( '/' . WFS_UPLOAD_ROUTE . '/' );
         ?>
@@ -708,20 +716,50 @@ final class WFS_Admin {
             </form>
         </section>
 
-        <section class="wfs-card">
+        <section class="wfs-card wfs-updates-card<?php echo ! empty( $diagnostics['update_available'] ) ? ' has-update' : ''; ?>">
             <div class="wfs-card-heading">
                 <div>
                     <span class="wfs-eyebrow"><?php esc_html_e( 'GitHub Releases', 'wp-fileshelf' ); ?></span>
                     <h2><?php esc_html_e( 'Plugin Updates', 'wp-fileshelf' ); ?></h2>
                 </div>
+                <?php if ( ! empty( $diagnostics['update_available'] ) ) : ?>
+                    <span class="wfs-update-badge"><span class="dashicons dashicons-update" aria-hidden="true"></span><?php esc_html_e( 'Update available', 'wp-fileshelf' ); ?></span>
+                <?php endif; ?>
             </div>
             <div class="wfs-diagnostics">
                 <div><span><?php esc_html_e( 'Installed', 'wp-fileshelf' ); ?></span><strong><?php echo esc_html( (string) $diagnostics['installed_version'] ); ?></strong></div>
-                <div><span><?php esc_html_e( 'Latest release', 'wp-fileshelf' ); ?></span><strong><?php echo esc_html( '' !== (string) $diagnostics['latest_version'] ? (string) $diagnostics['latest_version'] : '—' ); ?></strong></div>
+                <div class="<?php echo ! empty( $diagnostics['update_available'] ) ? 'wfs-diagnostic-update-available' : ''; ?>">
+                    <span><?php esc_html_e( 'Latest release', 'wp-fileshelf' ); ?></span>
+                    <strong><?php echo esc_html( '' !== (string) $diagnostics['latest_version'] ? (string) $diagnostics['latest_version'] : '—' ); ?></strong>
+                    <?php if ( ! empty( $diagnostics['update_available'] ) ) : ?><small><?php esc_html_e( 'Newer than installed', 'wp-fileshelf' ); ?></small><?php endif; ?>
+                </div>
                 <div><span><?php esc_html_e( 'Connection', 'wp-fileshelf' ); ?></span><strong><?php echo esc_html( ucwords( str_replace( '_', ' ', (string) $diagnostics['connection'] ) ) ); ?></strong></div>
                 <div><span><?php esc_html_e( 'Last checked', 'wp-fileshelf' ); ?></span><strong><?php echo ! empty( $diagnostics['last_checked'] ) ? esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $diagnostics['last_checked'] ) ) : '—'; ?></strong></div>
             </div>
-            <?php if ( ! empty( $diagnostics['message'] ) ) : ?><p class="description"><?php echo esc_html( (string) $diagnostics['message'] ); ?></p><?php endif; ?>
+
+            <?php if ( ! empty( $diagnostics['update_available'] ) ) : ?>
+                <div class="wfs-update-available-panel">
+                    <div class="wfs-update-available-copy">
+                        <span class="dashicons dashicons-update-alt" aria-hidden="true"></span>
+                        <div>
+                            <strong><?php echo esc_html( sprintf( __( 'WP FileShelf %s is available.', 'wp-fileshelf' ), (string) $diagnostics['latest_version'] ) ); ?></strong>
+                            <p><?php echo esc_html( sprintf( __( 'You are currently running version %s. You can install the GitHub release here using the standard WordPress plugin updater.', 'wp-fileshelf' ), (string) $diagnostics['installed_version'] ) ); ?></p>
+                        </div>
+                    </div>
+                    <?php if ( $update_ready ) : ?>
+                        <button type="button" class="button button-primary wfs-button-with-icon" data-wfs-apply-update data-version="<?php echo esc_attr( (string) $diagnostics['latest_version'] ); ?>">
+                            <span class="dashicons dashicons-update" aria-hidden="true"></span>
+                            <span><?php echo esc_html( sprintf( __( 'Update to v%s', 'wp-fileshelf' ), (string) $diagnostics['latest_version'] ) ); ?></span>
+                        </button>
+                    <?php else : ?>
+                        <a class="button button-primary wfs-button-with-icon" href="<?php echo esc_url( WFS_Updater::releases_url() ); ?>" target="_blank" rel="noopener noreferrer"><span class="dashicons dashicons-external" aria-hidden="true"></span><span><?php esc_html_e( 'View Release', 'wp-fileshelf' ); ?></span></a>
+                    <?php endif; ?>
+                </div>
+            <?php elseif ( 'connected' === (string) $diagnostics['connection'] && '' !== (string) $diagnostics['latest_version'] ) : ?>
+                <p class="wfs-update-current"><span class="dashicons dashicons-yes-alt" aria-hidden="true"></span><span><?php esc_html_e( 'WP FileShelf is up to date.', 'wp-fileshelf' ); ?></span></p>
+            <?php endif; ?>
+
+            <?php if ( ! empty( $diagnostics['message'] ) ) : ?><p class="description wfs-update-connection-message"><?php echo esc_html( (string) $diagnostics['message'] ); ?></p><?php endif; ?>
             <form class="wfs-update-check-form">
                 <input type="hidden" name="action" value="wfs_check_updates">
                 <button type="submit" class="button wfs-button-with-icon"><span class="dashicons dashicons-update" aria-hidden="true"></span><span><?php esc_html_e( 'Check for Updates', 'wp-fileshelf' ); ?></span></button>

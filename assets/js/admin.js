@@ -263,6 +263,50 @@
             .text(reveal ? (WFSAdmin.strings.hide || 'Hide') : (WFSAdmin.strings.view || 'View'));
     });
 
+    $(document).on('click', '[data-wfs-apply-update]', function () {
+        const $button = $(this);
+        const originalHtml = $button.html();
+        let updateSucceeded = false;
+
+        setBusy(true);
+        $button.prop('disabled', true).text(WFSAdmin.strings.updating || 'Updating…');
+
+        $.ajax({
+            url: WFSAdmin.ajaxUrl,
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'update-plugin',
+                _ajax_nonce: WFSAdmin.updateNonce,
+                plugin: WFSAdmin.pluginBasename,
+                slug: WFSAdmin.pluginSlug
+            }
+        }).done(function (response) {
+            if (!response || !response.success) {
+                const message = response && response.data && response.data.errorMessage
+                    ? response.data.errorMessage
+                    : (response && response.data && response.data.message ? response.data.message : WFSAdmin.strings.genericError);
+                showNotice(message, 'error');
+                return;
+            }
+
+            updateSucceeded = true;
+            $button.text(WFSAdmin.strings.updateDone || 'Update installed. Reloading…');
+            window.setTimeout(function () {
+                window.location.reload();
+            }, 900);
+        }).fail(function (xhr) {
+            showNotice(ajaxErrorMessage(xhr), 'error');
+        }).always(function () {
+            if (!updateSucceeded) {
+                if ($.contains(document, $button.get(0))) {
+                    $button.html(originalHtml).prop('disabled', false);
+                }
+                setBusy(false);
+            }
+        });
+    });
+
     $(document).on('submit', '.wfs-settings-form, .wfs-advanced-form, .wfs-update-check-form', function (event) {
         event.preventDefault();
         const formData = new FormData(this);

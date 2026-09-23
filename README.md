@@ -134,7 +134,7 @@ PDF is enabled by default on a new installation.
 
 ## Updating
 
-WP FileShelf checks the GitHub repository's normal releases and integrates with the standard WordPress plugin updater.
+WP FileShelf checks the GitHub repository's normal releases and integrates with the standard WordPress plugin updater. When a newer release is available, the Settings screen highlights it and provides an **Update to vX.Y.Z** button that installs the release through WordPress's native plugin update flow.
 
 To force a check:
 
