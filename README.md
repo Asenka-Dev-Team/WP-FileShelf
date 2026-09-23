@@ -112,12 +112,17 @@ The URL is virtual. The actual file is stored separately by FileShelf, so the pu
 Physical files live in:
 
 ```text
-ABSPATH/wp-fileshelf-uploads/
+WP_CONTENT_DIR/wp-fileshelf-uploads/
 ```
 
-This keeps FileShelf documents outside WordPress's normal `/wp-content/uploads/` Media Library structure.
+On a standard WordPress installation, that resolves to `/wp-content/wp-fileshelf-uploads/`. FileShelf uses `WP_CONTENT_DIR` rather than hard-coding `wp-content`, so customized WordPress content-directory layouts continue to work. The shelf remains separate from the normal `/wp-content/uploads/` Media Library structure.
 
-FileShelf creates a marker file and deny rules inside the storage directory. Apache, LiteSpeed, and IIS can use those rules directly. Nginx ignores `.htaccess`, so an Nginx site that must completely block the physical storage URL should also deny `/wp-fileshelf-uploads/` at the server level.
+FileShelf creates a marker file plus direct-access deny rules inside the storage directory. Apache/LiteSpeed can use the generated `.htaccess` rules, and IIS can use the generated `web.config`. Nginx ignores those files, so an Nginx site that must completely block the physical storage URL should also deny the FileShelf storage path at the server level. Public FileShelf links continue to use the configured virtual route, such as `/hr-docs/nj.pdf`.
+
+
+### Storage migration from v0.1.2 and earlier
+
+Versions before v0.1.3 stored files at the WordPress root in `/wp-fileshelf-uploads/`. On upgrade, FileShelf automatically migrates a marker-verified legacy shelf into `WP_CONTENT_DIR/wp-fileshelf-uploads/`. It first attempts a direct directory move; if the host requires a copy instead, FileShelf verifies the copied files before removing the old directory. If the migration cannot complete safely, the legacy shelf is left intact and FileShelf continues using it until migration succeeds.
 
 ## Allowed File Types
 
@@ -149,7 +154,7 @@ For a complete removal, enable:
 
 **Advanced → Delete all FileShelf data when this plugin is deleted**
 
-When that option is enabled, uninstall removes the verified `/wp-fileshelf-uploads/` directory, FileShelf database table, settings, and update cache.
+When that option is enabled, uninstall removes the verified FileShelf storage directory under `WP_CONTENT_DIR`, FileShelf database table, settings, and update cache. It also safely checks for the older pre-v0.1.3 root-level directory in case a storage migration was interrupted.
 
 ## Requirements
 
@@ -186,7 +191,7 @@ For a normal release:
 1. Update the plugin version in `wp-fileshelf.php`.
 2. Update `changelog.md`.
 3. Commit and push the release code.
-4. Create a Git tag such as `v0.1.2`.
+4. Create a Git tag such as `v0.1.3`.
 5. Publish a normal GitHub Release for that tag.
 
 WP FileShelf's updater ignores draft and prerelease releases.

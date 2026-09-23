@@ -17,6 +17,7 @@ $wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB.Pr
 
 $options = array(
     'wfs_db_version',
+    'wfs_storage_version',
     'wfs_link_slug',
     'wfs_allowed_mime_keys',
     'wfs_delete_on_uninstall',
@@ -37,9 +38,6 @@ $like_transient = $wpdb->esc_like( '_transient_wfs_login_' ) . '%';
 $like_timeout   = $wpdb->esc_like( '_transient_timeout_wfs_login_' ) . '%';
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $like_transient, $like_timeout ) );
 
-$dir    = trailingslashit( ABSPATH ) . 'wp-fileshelf-uploads';
-$marker = trailingslashit( $dir ) . '.wp-fileshelf';
-
 /**
  * Recursively delete a verified FileShelf directory without following symlinks.
  */
@@ -53,7 +51,12 @@ $delete_tree = static function ( string $path ) use ( &$delete_tree ): void {
         return;
     }
 
-    $iterator = new FilesystemIterator( $path, FilesystemIterator::SKIP_DOTS );
+    try {
+        $iterator = new FilesystemIterator( $path, FilesystemIterator::SKIP_DOTS );
+    } catch ( UnexpectedValueException $e ) {
+        return;
+    }
+
     foreach ( $iterator as $item ) {
         $child = $item->getPathname();
         if ( $item->isLink() || $item->isFile() ) {
@@ -66,19 +69,44 @@ $delete_tree = static function ( string $path ) use ( &$delete_tree ): void {
     @rmdir( $path );
 };
 
-// Multiple independent checks intentionally gate recursive deletion.
-if ( is_dir( $dir ) && ! is_link( $dir ) && is_file( $marker ) ) {
-    $real_dir  = realpath( $dir );
-    $real_root = realpath( ABSPATH );
+/**
+ * Delete only a marker-verified FileShelf directory whose direct parent is the
+ * expected WordPress directory. This deliberately refuses arbitrary paths.
+ */
+$delete_verified_shelf = static function ( string $dir, string $expected_parent ) use ( $delete_tree ): void {
+    $marker = trailingslashit( $dir ) . '.wp-fileshelf';
+
+    if ( ! is_dir( $dir ) || is_link( $dir ) || ! is_file( $marker ) ) {
+        return;
+    }
+
+    $real_dir    = realpath( $dir );
+    $real_parent = realpath( $expected_parent );
 
     if (
-        false !== $real_dir
-        && false !== $real_root
-        && basename( $real_dir ) === 'wp-fileshelf-uploads'
-        && dirname( $real_dir ) === rtrim( $real_root, DIRECTORY_SEPARATOR )
+        false === $real_dir
+        || false === $real_parent
+        || 'wp-fileshelf-uploads' !== basename( $real_dir )
+        || rtrim( dirname( $real_dir ), DIRECTORY_SEPARATOR ) !== rtrim( $real_parent, DIRECTORY_SEPARATOR )
     ) {
-        $delete_tree( $real_dir );
+        return;
     }
+
+    $delete_tree( $real_dir );
+};
+
+// v0.1.3+ storage location.
+$delete_verified_shelf(
+    trailingslashit( WP_CONTENT_DIR ) . 'wp-fileshelf-uploads',
+    WP_CONTENT_DIR
+);
+
+// Also clean the pre-v0.1.3 root location if a migration was interrupted and
+// the verified legacy directory still exists.
+$legacy_dir = trailingslashit( ABSPATH ) . 'wp-fileshelf-uploads';
+$new_dir    = trailingslashit( WP_CONTENT_DIR ) . 'wp-fileshelf-uploads';
+if ( wp_normalize_path( $legacy_dir ) !== wp_normalize_path( $new_dir ) ) {
+    $delete_verified_shelf( $legacy_dir, ABSPATH );
 }
 
 if ( function_exists( 'flush_rewrite_rules' ) ) {

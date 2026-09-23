@@ -780,7 +780,7 @@ final class WFS_Admin {
                     <input type="checkbox" name="wfs_delete_on_uninstall" value="1" <?php checked( $delete ); ?>>
                     <span>
                         <strong><?php esc_html_e( 'Delete all FileShelf data when this plugin is deleted', 'wp-fileshelf' ); ?></strong>
-                        <small><?php esc_html_e( 'When enabled, deleting WP FileShelf removes the wp-fileshelf-uploads directory, stored files, FileShelf database table, settings, and update cache. Deactivating never deletes files. Default is off.', 'wp-fileshelf' ); ?></small>
+                        <small><?php esc_html_e( 'When enabled, deleting WP FileShelf removes the wp-content/wp-fileshelf-uploads directory, stored files, FileShelf database table, settings, and update cache. Deactivating never deletes files. Default is off.', 'wp-fileshelf' ); ?></small>
                     </span>
                 </label>
             </section>

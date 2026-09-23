@@ -3,7 +3,7 @@
  * Plugin Name: WP FileShelf
  * Plugin URI: https://asenka.com/
  * Description: Manage a private staff-uploaded file shelf with stable public file URLs outside the WordPress Media Library.
- * Version: 0.1.2
+ * Version: 0.1.3
  * Author: Asenka Interactive
  * Author URI: https://asenka.com/
  * Text Domain: wp-fileshelf
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'WFS_VERSION', '0.1.2' );
+define( 'WFS_VERSION', '0.1.3' );
 define( 'WFS_FILE', __FILE__ );
 define( 'WFS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WFS_URL', plugin_dir_url( __FILE__ ) );
@@ -58,7 +58,7 @@ final class WP_FileShelf {
 
     public static function activate(): void {
         WFS_DB::install();
-        WFS_Files::ensure_storage_directory();
+        WFS_Files::init();
 
         if ( false === get_option( 'wfs_link_slug', false ) ) {
             add_option( 'wfs_link_slug', 'fileshelf', '', false );

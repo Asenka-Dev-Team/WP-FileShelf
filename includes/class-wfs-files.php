@@ -5,12 +5,47 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class WFS_Files {
+    private const STORAGE_VERSION = '2';
+
     public static function init(): void {
-        // Reserved for future hooks. Keeping a class-level init mirrors WP FileTrace.
+        self::maybe_migrate_legacy_storage();
+        self::ensure_storage_directory();
     }
 
+    /**
+     * Return the active physical storage directory.
+     *
+     * v0.1.3 moves FileShelf storage into WP_CONTENT_DIR. If an upgrade from an
+     * older release cannot be migrated safely, keep using the verified legacy
+     * directory until a later request can complete the migration.
+     */
     public static function storage_dir(): string {
+        if ( self::STORAGE_VERSION !== (string) get_option( 'wfs_storage_version', '' ) && self::legacy_storage_is_valid() ) {
+            return self::legacy_storage_dir();
+        }
+
+        return self::preferred_storage_dir();
+    }
+
+    private static function preferred_storage_dir(): string {
+        return trailingslashit( WP_CONTENT_DIR ) . WFS_STORAGE_DIRNAME;
+    }
+
+    private static function legacy_storage_dir(): string {
         return trailingslashit( ABSPATH ) . WFS_STORAGE_DIRNAME;
+    }
+
+    private static function legacy_storage_is_valid(): bool {
+        $legacy = self::legacy_storage_dir();
+        $target = self::preferred_storage_dir();
+
+        if ( self::same_path( $legacy, $target ) ) {
+            return false;
+        }
+
+        return is_dir( $legacy )
+            && ! is_link( $legacy )
+            && is_file( trailingslashit( $legacy ) . '.wp-fileshelf' );
     }
 
     public static function marker_path(): string {
@@ -18,13 +53,19 @@ final class WFS_Files {
     }
 
     public static function ensure_storage_directory(): bool {
-        $dir = self::storage_dir();
+        return self::ensure_directory_at( self::storage_dir() );
+    }
 
+    private static function ensure_directory_at( string $dir ): bool {
         if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
             return false;
         }
 
-        $marker = self::marker_path();
+        if ( is_link( $dir ) ) {
+            return false;
+        }
+
+        $marker = trailingslashit( $dir ) . '.wp-fileshelf';
         if ( ! file_exists( $marker ) ) {
             @file_put_contents( $marker, "WP FileShelf storage directory\n" );
         }
@@ -34,14 +75,15 @@ final class WFS_Files {
             @file_put_contents( $index, "<?php\n// Silence is golden.\n" );
         }
 
-        // Apache / LiteSpeed: prevent direct access to the physical directory.
+        // Apache / LiteSpeed: prevent direct HTTP access to the physical shelf.
         $htaccess = trailingslashit( $dir ) . '.htaccess';
         if ( ! file_exists( $htaccess ) ) {
-            $rules = "# WP FileShelf\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Deny from all\n</IfModule>\n";
+            $rules = "# WP FileShelf\nOptions -Indexes\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n    Deny from all\n</IfModule>\n";
             @file_put_contents( $htaccess, $rules );
         }
 
-        // IIS equivalent. Nginx users may need a server-level deny rule for the physical path.
+        // IIS equivalent. Nginx ignores both .htaccess and web.config and may
+        // require a server-level deny rule for the physical storage URL.
         $webconfig = trailingslashit( $dir ) . 'web.config';
         if ( ! file_exists( $webconfig ) ) {
             $config = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
@@ -50,7 +92,194 @@ final class WFS_Files {
             @file_put_contents( $webconfig, $config );
         }
 
-        return is_dir( $dir ) && is_writable( $dir );
+        return is_dir( $dir ) && is_writable( $dir ) && is_file( $marker );
+    }
+
+    /**
+     * Move pre-v0.1.3 root-level storage into WP_CONTENT_DIR without risking
+     * deletion of the old shelf when the copy cannot be verified.
+     */
+    private static function maybe_migrate_legacy_storage(): void {
+        if ( self::STORAGE_VERSION === (string) get_option( 'wfs_storage_version', '' ) ) {
+            return;
+        }
+
+        $legacy = self::legacy_storage_dir();
+        $target = self::preferred_storage_dir();
+
+        if ( self::same_path( $legacy, $target ) ) {
+            if ( self::ensure_directory_at( $target ) ) {
+                update_option( 'wfs_storage_version', self::STORAGE_VERSION, false );
+            }
+            return;
+        }
+
+        if ( ! self::legacy_storage_is_valid() ) {
+            if ( self::ensure_directory_at( $target ) ) {
+                update_option( 'wfs_storage_version', self::STORAGE_VERSION, false );
+            }
+            return;
+        }
+
+        // Fast path when the source and destination are on the same filesystem.
+        if ( ! file_exists( $target ) ) {
+            $parent = dirname( $target );
+            if ( is_dir( $parent ) && is_writable( $parent ) && @rename( $legacy, $target ) ) {
+                if ( self::ensure_directory_at( $target ) ) {
+                    update_option( 'wfs_storage_version', self::STORAGE_VERSION, false );
+                }
+                return;
+            }
+        }
+
+        // Cross-filesystem / restricted-host fallback: copy, verify, then remove.
+        if ( ! self::ensure_directory_at( $target ) ) {
+            return;
+        }
+
+        if ( ! self::copy_tree_verified( $legacy, $target ) ) {
+            return;
+        }
+
+        if ( ! self::trees_match( $legacy, $target ) ) {
+            return;
+        }
+
+        self::delete_tree( $legacy );
+
+        if ( ! is_dir( $legacy ) && self::ensure_directory_at( $target ) ) {
+            update_option( 'wfs_storage_version', self::STORAGE_VERSION, false );
+        }
+    }
+
+    private static function copy_tree_verified( string $source, string $destination ): bool {
+        if ( ! is_dir( $source ) || is_link( $source ) || ! self::ensure_directory_at( $destination ) ) {
+            return false;
+        }
+
+        try {
+            $iterator = new FilesystemIterator( $source, FilesystemIterator::SKIP_DOTS );
+        } catch ( UnexpectedValueException $e ) {
+            return false;
+        }
+
+        foreach ( $iterator as $item ) {
+            $src = $item->getPathname();
+            $dst = trailingslashit( $destination ) . $item->getFilename();
+
+            if ( $item->isLink() ) {
+                return false;
+            }
+
+            if ( $item->isDir() ) {
+                if ( ! self::copy_tree_verified( $src, $dst ) ) {
+                    return false;
+                }
+                continue;
+            }
+
+            if ( ! $item->isFile() ) {
+                return false;
+            }
+
+            if ( file_exists( $dst ) ) {
+                if ( ! is_file( $dst ) || ! self::files_match( $src, $dst ) ) {
+                    // Protection/support files may be regenerated by v0.1.3.
+                    if ( ! in_array( $item->getFilename(), array( '.wp-fileshelf', '.htaccess', 'index.php', 'web.config' ), true ) ) {
+                        return false;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            if ( ! @copy( $src, $dst ) || ! self::files_match( $src, $dst ) ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function trees_match( string $source, string $destination ): bool {
+        try {
+            $iterator = new FilesystemIterator( $source, FilesystemIterator::SKIP_DOTS );
+        } catch ( UnexpectedValueException $e ) {
+            return false;
+        }
+
+        foreach ( $iterator as $item ) {
+            if ( $item->isLink() ) {
+                return false;
+            }
+
+            $dst = trailingslashit( $destination ) . $item->getFilename();
+            if ( $item->isDir() ) {
+                if ( ! is_dir( $dst ) || ! self::trees_match( $item->getPathname(), $dst ) ) {
+                    return false;
+                }
+            } elseif ( $item->isFile() ) {
+                if ( ! is_file( $dst ) || ! self::files_match( $item->getPathname(), $dst ) ) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function files_match( string $a, string $b ): bool {
+        if ( ! is_file( $a ) || ! is_file( $b ) ) {
+            return false;
+        }
+
+        $size_a = @filesize( $a );
+        $size_b = @filesize( $b );
+        if ( false === $size_a || false === $size_b || $size_a !== $size_b ) {
+            return false;
+        }
+
+        $hash_a = @hash_file( 'sha256', $a );
+        $hash_b = @hash_file( 'sha256', $b );
+        return is_string( $hash_a ) && is_string( $hash_b ) && hash_equals( $hash_a, $hash_b );
+    }
+
+    private static function delete_tree( string $path ): void {
+        if ( is_link( $path ) || is_file( $path ) ) {
+            @unlink( $path );
+            return;
+        }
+
+        if ( ! is_dir( $path ) ) {
+            return;
+        }
+
+        try {
+            $iterator = new FilesystemIterator( $path, FilesystemIterator::SKIP_DOTS );
+        } catch ( UnexpectedValueException $e ) {
+            return;
+        }
+
+        foreach ( $iterator as $item ) {
+            $child = $item->getPathname();
+            if ( $item->isLink() || $item->isFile() ) {
+                @unlink( $child );
+            } elseif ( $item->isDir() ) {
+                self::delete_tree( $child );
+            }
+        }
+
+        @rmdir( $path );
+    }
+
+    private static function same_path( string $a, string $b ): bool {
+        $normalize = static function ( string $path ): string {
+            return strtolower( rtrim( wp_normalize_path( $path ), '/' ) );
+        };
+
+        return $normalize( $a ) === $normalize( $b );
     }
 
     /**

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3
+
+- Moved FileShelf physical storage from the WordPress root to `WP_CONTENT_DIR/wp-fileshelf-uploads/`.
+- Kept FileShelf storage separate from the normal WordPress Media Library uploads directory.
+- Added automatic migration for marker-verified pre-v0.1.3 root-level storage, with verified copy fallback when a direct directory move is unavailable.
+- Added a safe legacy-storage fallback so files remain available if migration cannot complete immediately.
+- Updated Apache/LiteSpeed and IIS direct-access protection files for the new storage location.
+- Updated uninstall cleanup to verify and remove the new storage location and, when present, an interrupted legacy location.
+- Added the FileShelf storage-version option used to track migration state.
+
 ## 0.1.2
 
 - Moved the WordPress admin uploader into the Files screen above the file directory and removed the separate Upload tab.
