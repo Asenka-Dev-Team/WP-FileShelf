@@ -62,7 +62,10 @@ final class WFS_Frontend {
                     <input type="hidden" name="action" value="wfs_frontend_login">
                     <input type="hidden" name="nonce" value="<?php echo esc_attr( $nonce ); ?>">
                     <label for="wfs-password"><?php esc_html_e( 'Password', 'wp-fileshelf' ); ?></label>
-                    <input id="wfs-password" name="password" type="password" required autofocus autocomplete="current-password">
+                    <div class="wfs-front-password-control">
+                        <input id="wfs-password" name="password" type="password" required autofocus autocomplete="current-password">
+                        <button type="button" class="wfs-front-password-toggle" data-wfs-password-toggle="wfs-password" aria-pressed="false"><?php esc_html_e( 'View', 'wp-fileshelf' ); ?></button>
+                    </div>
                     <button type="submit"><?php esc_html_e( 'Continue', 'wp-fileshelf' ); ?></button>
                 </form>
             <?php else : ?>
@@ -113,6 +116,8 @@ final class WFS_Frontend {
                     'uploading'     => __( 'Uploading…', 'wp-fileshelf' ),
                     'uploaded'      => __( 'File uploaded successfully.', 'wp-fileshelf' ),
                     'replaced'      => __( 'Existing file replaced successfully.', 'wp-fileshelf' ),
+                    'view'          => __( 'View', 'wp-fileshelf' ),
+                    'hide'          => __( 'Hide', 'wp-fileshelf' ),
                     'genericError'  => __( 'Something went wrong. Please try again.', 'wp-fileshelf' ),
                     'duplicate'     => __( '%s already exists. Do you want to replace the existing file?', 'wp-fileshelf' ),
                 ),

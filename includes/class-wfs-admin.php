@@ -74,6 +74,8 @@ final class WFS_Admin {
                     'deleting'      => __( 'Deleting…', 'wp-fileshelf' ),
                     'checking'      => __( 'Checking…', 'wp-fileshelf' ),
                     'copied'        => __( 'Copied!', 'wp-fileshelf' ),
+                    'view'          => __( 'View', 'wp-fileshelf' ),
+                    'hide'          => __( 'Hide', 'wp-fileshelf' ),
                     'genericError'  => __( 'Something went wrong. Please try again.', 'wp-fileshelf' ),
                     'confirmDelete' => __( 'Delete this file permanently? Its public FileShelf link will stop working. This cannot be undone.', 'wp-fileshelf' ),
                 ),
@@ -294,7 +296,7 @@ final class WFS_Admin {
     }
 
     private static function available_tabs(): array {
-        return array( 'files', 'upload', 'settings', 'advanced' );
+        return array( 'files', 'settings', 'advanced' );
     }
 
     private static function tab_from_request(): string {
@@ -385,9 +387,6 @@ final class WFS_Admin {
             <div class="wfs-view">
                 <?php
                 switch ( $tab ) {
-                    case 'upload':
-                        self::render_upload_tab();
-                        break;
                     case 'settings':
                         self::render_settings_tab();
                         break;
@@ -414,7 +413,6 @@ final class WFS_Admin {
     private static function render_tabs( string $active ): void {
         $tabs = array(
             'files'    => __( 'Files', 'wp-fileshelf' ),
-            'upload'   => __( 'Upload', 'wp-fileshelf' ),
             'settings' => __( 'Settings', 'wp-fileshelf' ),
             'advanced' => __( 'Advanced', 'wp-fileshelf' ),
         );
@@ -451,6 +449,8 @@ final class WFS_Admin {
         $state = self::list_state_from_request();
         $list  = WFS_Files::get_list( $state['paged'], self::PER_PAGE, $state['orderby'], $state['order'], $state['s'] );
         ?>
+        <?php self::render_upload_section(); ?>
+
         <section class="wfs-card">
             <div class="wfs-card-heading wfs-card-heading-files">
                 <div>
@@ -510,14 +510,14 @@ final class WFS_Admin {
             <td><?php echo esc_html( $modified ); ?></td>
             <td class="wfs-actions-column">
                 <div class="wfs-row-actions">
-                    <button type="button" class="button wfs-icon-only-button" data-wfs-edit="<?php echo esc_attr( (string) $item->id ); ?>" title="<?php echo esc_attr__( 'Edit / replace', 'wp-fileshelf' ); ?>">
-                        <span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text"><?php esc_html_e( 'Edit / replace', 'wp-fileshelf' ); ?></span>
+                    <button type="button" class="button button-small wfs-button-with-icon" data-wfs-edit="<?php echo esc_attr( (string) $item->id ); ?>" title="<?php echo esc_attr__( 'Edit / replace', 'wp-fileshelf' ); ?>">
+                        <span class="dashicons dashicons-edit" aria-hidden="true"></span><span><?php esc_html_e( 'Edit', 'wp-fileshelf' ); ?></span>
                     </button>
-                    <button type="button" class="button wfs-icon-only-button" data-wfs-copy="<?php echo esc_attr( $url ); ?>" title="<?php echo esc_attr__( 'Copy link', 'wp-fileshelf' ); ?>">
-                        <span class="dashicons dashicons-admin-links" aria-hidden="true"></span><span class="screen-reader-text"><?php esc_html_e( 'Copy link', 'wp-fileshelf' ); ?></span>
+                    <button type="button" class="button button-small wfs-button-with-icon" data-wfs-copy="<?php echo esc_attr( $url ); ?>" title="<?php echo esc_attr__( 'Copy link', 'wp-fileshelf' ); ?>">
+                        <span class="dashicons dashicons-admin-links" aria-hidden="true"></span><span><?php esc_html_e( 'Copy Link', 'wp-fileshelf' ); ?></span>
                     </button>
-                    <button type="button" class="button wfs-icon-only-button wfs-delete-button" data-wfs-delete="<?php echo esc_attr( (string) $item->id ); ?>" title="<?php echo esc_attr__( 'Delete file', 'wp-fileshelf' ); ?>">
-                        <span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text"><?php esc_html_e( 'Delete file', 'wp-fileshelf' ); ?></span>
+                    <button type="button" class="button button-small wfs-button-with-icon wfs-delete-button" data-wfs-delete="<?php echo esc_attr( (string) $item->id ); ?>" title="<?php echo esc_attr__( 'Delete file', 'wp-fileshelf' ); ?>">
+                        <span class="dashicons dashicons-trash" aria-hidden="true"></span><span><?php esc_html_e( 'Delete', 'wp-fileshelf' ); ?></span>
                     </button>
                 </div>
             </td>
@@ -614,19 +614,19 @@ final class WFS_Admin {
         <?php
     }
 
-    private static function render_upload_tab(): void {
+    private static function render_upload_section(): void {
         $allowed = self::allowed_extensions_label();
         ?>
-        <section class="wfs-card wfs-card-narrow">
+        <section class="wfs-card wfs-upload-section">
             <div class="wfs-card-heading">
                 <div>
                     <span class="wfs-eyebrow"><?php esc_html_e( 'Add document', 'wp-fileshelf' ); ?></span>
-                    <h2><?php esc_html_e( 'Upload', 'wp-fileshelf' ); ?></h2>
-                    <p><?php esc_html_e( 'Upload directly into the FileShelf storage directory.', 'wp-fileshelf' ); ?></p>
+                    <h2><?php esc_html_e( 'Upload File', 'wp-fileshelf' ); ?></h2>
+                    <p><?php esc_html_e( 'Add a new file to FileShelf. Existing filenames can be replaced from the directory below.', 'wp-fileshelf' ); ?></p>
                 </div>
             </div>
 
-            <form class="wfs-upload-form" enctype="multipart/form-data">
+            <form class="wfs-upload-form wfs-upload-inline-form" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="wfs_upload_file">
                 <div class="wfs-field-group">
                     <label for="wfs-admin-file"><?php esc_html_e( 'File', 'wp-fileshelf' ); ?></label>
@@ -677,9 +677,12 @@ final class WFS_Admin {
 
                         <div class="wfs-field-group">
                             <label for="wfs-upload-password"><?php esc_html_e( 'Upload password', 'wp-fileshelf' ); ?></label>
-                            <input id="wfs-upload-password" type="password" name="wfs_upload_password" minlength="8" autocomplete="new-password" placeholder="<?php echo esc_attr( $has_password ? __( 'Leave blank to keep current password', 'wp-fileshelf' ) : __( 'Set an upload password', 'wp-fileshelf' ) ); ?>">
+                            <div class="wfs-password-control">
+                                <input id="wfs-upload-password" type="password" name="wfs_upload_password" minlength="8" autocomplete="new-password" placeholder="<?php echo esc_attr( $has_password ? __( 'Leave blank to keep current password', 'wp-fileshelf' ) : __( 'Set an upload password', 'wp-fileshelf' ) ); ?>">
+                                <button type="button" class="button wfs-password-toggle" data-wfs-password-toggle="wfs-upload-password" aria-pressed="false"><?php esc_html_e( 'View', 'wp-fileshelf' ); ?></button>
+                            </div>
                             <p class="description">
-                                <?php echo $has_password ? esc_html__( 'A password is currently set. Enter a new one only if you want to change it.', 'wp-fileshelf' ) : esc_html__( 'No password is currently set, so the public upload form is locked.', 'wp-fileshelf' ); ?>
+                                <?php echo $has_password ? esc_html__( 'A password is currently set. For security, saved passwords are hashed and cannot be displayed. Use View/Hide while entering a new password.', 'wp-fileshelf' ) : esc_html__( 'No password is currently set, so the public upload form is locked. Use View/Hide while entering a password if needed.', 'wp-fileshelf' ); ?>
                             </p>
                         </div>
                         <?php if ( $has_password ) : ?>
@@ -721,8 +724,8 @@ final class WFS_Admin {
             <?php if ( ! empty( $diagnostics['message'] ) ) : ?><p class="description"><?php echo esc_html( (string) $diagnostics['message'] ); ?></p><?php endif; ?>
             <form class="wfs-update-check-form">
                 <input type="hidden" name="action" value="wfs_check_updates">
-                <button type="submit" class="button"><?php esc_html_e( 'Check for Updates', 'wp-fileshelf' ); ?></button>
-                <a class="button" href="<?php echo esc_url( WFS_Updater::releases_url() ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'GitHub Releases', 'wp-fileshelf' ); ?></a>
+                <button type="submit" class="button wfs-button-with-icon"><span class="dashicons dashicons-update" aria-hidden="true"></span><span><?php esc_html_e( 'Check for Updates', 'wp-fileshelf' ); ?></span></button>
+                <a class="button wfs-button-with-icon" href="<?php echo esc_url( WFS_Updater::releases_url() ); ?>" target="_blank" rel="noopener noreferrer"><span class="dashicons dashicons-external" aria-hidden="true"></span><span><?php esc_html_e( 'GitHub Releases', 'wp-fileshelf' ); ?></span></a>
             </form>
         </section>
         <?php

@@ -11,6 +11,20 @@
     const confirmReplace = document.getElementById('wfs-confirm-replace');
     let pendingUploadForm = null;
 
+    document.querySelectorAll('[data-wfs-password-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const targetId = button.getAttribute('data-wfs-password-toggle') || '';
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (!input) return;
+
+            const reveal = input.type === 'password';
+            input.type = reveal ? 'text' : 'password';
+            button.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+            button.textContent = reveal ? (config.strings.hide || 'Hide') : (config.strings.view || 'View');
+            input.focus();
+        });
+    });
+
     function showNotice(message, type) {
         if (!notice) return;
         notice.hidden = false;

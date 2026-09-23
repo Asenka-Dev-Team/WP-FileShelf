@@ -262,3 +262,29 @@ body.wfs-modal-open {
     width: 100%;
   }
 }
+
+.wfs-front-password-control {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.wfs-front-password-control input[type="password"],
+.wfs-front-password-control input[type="text"] {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.wfs-front-form button.wfs-front-password-toggle {
+  flex: 0 0 auto;
+  min-width: 66px;
+  color: #344054;
+  background: #fff;
+  border-color: #cfd5dd;
+}
+
+.wfs-front-form button.wfs-front-password-toggle:hover {
+  color: #1f2937;
+  background: #f8fafc;
+  border-color: #98a2b3;
+}

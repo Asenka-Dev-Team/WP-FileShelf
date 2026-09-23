@@ -1,53 +1,113 @@
-# WP FileShelf
+<p align="center">
+  <img src="assets/images/icon--wp-fileshelf.svg" alt="WP FileShelf logo" width="110">
+</p>
 
-WP FileShelf is a staff-managed WordPress file repository built as a sibling to WP FileTrace.
+<h1 align="center">WP FileShelf</h1>
 
-It stores files outside the normal WordPress Media Library in:
+<p align="center"><strong>Staff-managed WordPress file storage with stable public links and easy file replacement.</strong></p>
 
-```text
-/wp-fileshelf-uploads/
-```
+WP FileShelf gives a WordPress site a simple document shelf outside the normal Media Library. Staff can upload files from WordPress admin or from a password-protected front-end page, while public file URLs stay predictable even when a file is replaced later.
 
-and exposes them through a configurable virtual link path, for example:
+## What can WP FileShelf do?
+
+- Store managed files outside the normal WordPress Media Library.
+- Give files stable, configurable public URLs such as `https://example.com/hr-docs/nj.pdf`.
+- Let administrators upload, search, sort, rename, replace, delete, and copy file links from one screen.
+- Give staff a password-protected uploader at `/wpfileshelf/` without requiring a WordPress account.
+- Detect duplicate filenames and let authenticated staff intentionally replace the existing file.
+- Keep the existing filename and public URL when a file is replaced.
+- Limit uploads to file types selected under **Advanced**.
+- Receive normal WordPress plugin updates from GitHub Releases.
+
+## Quick Start
+
+1. Download the latest WP FileShelf ZIP from the GitHub **Releases** page.
+2. In WordPress, go to **Plugins → Add New Plugin → Upload Plugin**.
+3. Upload the ZIP, install it, and activate **WP FileShelf**.
+4. Open **WP FileShelf → Settings**.
+5. Set the staff upload password and public file link path.
+6. Open **Advanced** and choose which file types can be uploaded.
+7. Open **Files** to upload and manage documents.
+
+PDF is enabled by default.
+
+## Files
+
+The **Files** screen contains the admin uploader and the FileShelf directory in one place.
+
+Each stored file shows:
+
+- Filename
+- Optional internal **Name / Description**
+- Original upload date
+- Last modified date
+- File size and MIME type
+- **Edit** action
+- **Copy Link** action
+- **Delete** action
+
+The directory supports AJAX search, sortable columns, and 20-item pagination.
+
+### Replacing a file
+
+Use **Edit** to replace an existing file without changing its public link.
+
+For example, if this link already exists:
 
 ```text
 https://example.com/hr-docs/nj.pdf
 ```
 
-## v0.1.0 features
+an administrator can upload a newer PDF as its replacement. FileShelf stores the new contents under the existing `nj.pdf` filename, so links already used in pages, emails, or documents keep working.
 
-- GitHub Release-based plugin updates from `Asenka-Dev-Team/WP-FileShelf`.
-- Top-level WordPress admin screen with AJAX tabs and CRUD actions.
-- Files directory with 20-per-page pagination, search, sortable columns, edit/replace, delete, and copy-link controls.
-- Admin upload tab.
-- Password-protected staff upload page at `/wpfileshelf/`.
-- Duplicate filename detection on the staff uploader with an explicit replace confirmation flow.
-- Replacement preserves the existing FileShelf filename/link and original upload date while updating modified date.
-- Configurable public link prefix.
-- Allowed file types derived from WordPress's supported upload MIME types; PDF is enabled by default.
-- Optional full data/file removal when the plugin is deleted. This is disabled by default.
+The replacement must use the same file extension as the existing FileShelf file.
 
-## Install
+## Staff Upload Page
 
-1. Upload the `wp-fileshelf` folder or ZIP through WordPress Plugins.
-2. Activate **WP FileShelf**.
-3. Open **WP FileShelf → Settings**.
-4. Set the staff upload password and public file link path.
-5. Open **Advanced** to choose allowed file types.
-
-## Staff upload page
-
-The upload page is always:
+The front-end uploader is always available at:
 
 ```text
 https://example.com/wpfileshelf/
 ```
 
-A configured password is required before uploads are enabled.
+It is locked until an administrator sets an upload password under **WP FileShelf → Settings**.
 
-Successful authentication is stored in an HttpOnly signed cookie for up to 8 hours. Changing or clearing the upload password invalidates existing FileShelf upload sessions.
+Anyone who has the URL and password can upload the file types enabled under **Advanced**. A successful login creates a signed HttpOnly session cookie for up to eight hours.
 
-## File storage
+Both the WordPress admin password field and the front-end login field include **View / Hide** controls while a password is being typed. Saved passwords are hashed by WordPress and are never stored in a recoverable form, so an existing saved password cannot be displayed later.
+
+### Duplicate filenames
+
+If authenticated staff upload a filename that already exists, FileShelf asks whether they want to replace it.
+
+Confirming replacement keeps the existing:
+
+- Filename
+- Public URL
+- Name / Description
+- Original upload date
+
+The file contents and modified date are updated.
+
+## Public File Links
+
+The public link prefix is configurable under **Settings**.
+
+If the link path is set to:
+
+```text
+hr-docs
+```
+
+then a file named `nj.pdf` is available at:
+
+```text
+https://example.com/hr-docs/nj.pdf
+```
+
+The URL is virtual. The actual file is stored separately by FileShelf, so the public link does not expose the physical storage directory.
+
+## File Storage
 
 Physical files live in:
 
@@ -55,33 +115,92 @@ Physical files live in:
 ABSPATH/wp-fileshelf-uploads/
 ```
 
-WP FileShelf creates a marker file and Apache/LiteSpeed/IIS deny rules inside the directory. Nginx ignores `.htaccess`, so sites that require the physical path to be completely inaccessible should also deny `/wp-fileshelf-uploads/` at the Nginx server level.
+This keeps FileShelf documents outside WordPress's normal `/wp-content/uploads/` Media Library structure.
 
-Public FileShelf links are served through WordPress's rewrite system rather than by exposing the physical storage URL.
+FileShelf creates a marker file and deny rules inside the storage directory. Apache, LiteSpeed, and IIS can use those rules directly. Nginx ignores `.htaccess`, so an Nginx site that must completely block the physical storage URL should also deny `/wp-fileshelf-uploads/` at the server level.
 
-## Replacement behavior
+## Allowed File Types
 
-### Staff frontend
+Open **WP FileShelf → Advanced** to choose the allowed upload types.
 
-If an uploaded filename already exists, FileShelf asks whether the uploader wants to replace it. Confirming replacement keeps the original FileShelf filename, link, display name, and upload date and updates the file contents and modified date.
+The list is built from WordPress's supported MIME types instead of maintaining a separate hard-coded list. The selected types apply to both the admin uploader and `/wpfileshelf/`.
 
-### WordPress admin
+PDF is enabled by default on a new installation.
 
-The pencil action allows an administrator to change the display name and optionally upload a replacement file. A replacement can have a different source filename, but it must use the same extension as the existing FileShelf file. FileShelf stores it under the existing filename so the public link does not change.
+## Updating
 
-## Uninstall behavior
+WP FileShelf checks the GitHub repository's normal releases and integrates with the standard WordPress plugin updater.
 
-By default, deleting the plugin preserves all FileShelf files, database metadata, and settings.
+To force a check:
 
-Under **Advanced → Uninstall Behavior**, an administrator can explicitly enable complete cleanup. When enabled, deleting the plugin removes the FileShelf database table, FileShelf settings/cache, and the verified `/wp-fileshelf-uploads/` directory.
+1. Open **WP FileShelf → Settings**.
+2. Find **Plugin Updates**.
+3. Click **Check for Updates**.
 
-Deactivating WP FileShelf never deletes files.
+The latest normal GitHub release is then made available through WordPress when its version is newer than the installed version.
+
+## Uninstalling
+
+Deactivating WP FileShelf never deletes stored files.
+
+By default, deleting the plugin also preserves its files, database metadata, and settings so a later reinstall can reconnect to the existing shelf.
+
+For a complete removal, enable:
+
+**Advanced → Delete all FileShelf data when this plugin is deleted**
+
+When that option is enabled, uninstall removes the verified `/wp-fileshelf-uploads/` directory, FileShelf database table, settings, and update cache.
 
 ## Requirements
 
 - WordPress 6.4+
 - PHP 8.0+
 
+## Developer Notes
+
+WP FileShelf is intentionally separate from the WordPress Media Library. Managed files are tracked in a small FileShelf database table and routed through FileShelf's own public rewrite endpoint.
+
+Primary plugin classes live in `includes/`:
+
+- `class-wfs-db.php` — database setup
+- `class-wfs-files.php` — storage, validation, and file CRUD
+- `class-wfs-router.php` — virtual public file URLs
+- `class-wfs-frontend.php` — password-protected staff uploader
+- `class-wfs-admin.php` — AJAX admin interface
+- `class-wfs-updater.php` — GitHub Release updater
+
+## Data Storage
+
+File metadata is stored in the WordPress table:
+
+```text
+{prefix}wfs_files
+```
+
+Plugin settings are stored as normal WordPress options using the `wfs_` prefix.
+
+## GitHub Release Workflow
+
+For a normal release:
+
+1. Update the plugin version in `wp-fileshelf.php`.
+2. Update `changelog.md`.
+3. Commit and push the release code.
+4. Create a Git tag such as `v0.1.2`.
+5. Publish a normal GitHub Release for that tag.
+
+WP FileShelf's updater ignores draft and prerelease releases.
+
+## Changelog
+
+See [`changelog.md`](changelog.md) for release history.
+
 ## License
 
-GPL-3.0-or-later.
+GPL-3.0-or-later. See [`LICENSE`](LICENSE).
+
+## Credits
+
+Built by **Asenka Interactive**.
+
+Primary developer: **Brian McLendon** — [GitHub](https://github.com/eyeofbri)

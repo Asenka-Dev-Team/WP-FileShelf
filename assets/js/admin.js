@@ -251,6 +251,18 @@
         copyText(String($(this).data('wfs-copy') || ''), $(this));
     });
 
+    $(document).on('click', '[data-wfs-password-toggle]', function () {
+        const targetId = String($(this).data('wfs-password-toggle') || '');
+        const input = targetId ? document.getElementById(targetId) : null;
+        if (!input) return;
+
+        const reveal = input.type === 'password';
+        input.type = reveal ? 'text' : 'password';
+        $(this)
+            .attr('aria-pressed', reveal ? 'true' : 'false')
+            .text(reveal ? (WFSAdmin.strings.hide || 'Hide') : (WFSAdmin.strings.view || 'View'));
+    });
+
     $(document).on('submit', '.wfs-settings-form, .wfs-advanced-form, .wfs-update-check-form', function (event) {
         event.preventDefault();
         const formData = new FormData(this);
