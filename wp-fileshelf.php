@@ -3,7 +3,7 @@
  * Plugin Name: WP FileShelf
  * Plugin URI: https://asenka.com/
  * Description: Manage a private staff-uploaded file shelf with stable public file URLs outside the WordPress Media Library.
- * Version: 0.1.4
+ * Version: 0.1.5
  * Author: Asenka Interactive
  * Author URI: https://asenka.com/
  * Text Domain: wp-fileshelf
@@ -18,13 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'WFS_VERSION', '0.1.4' );
+define( 'WFS_VERSION', '0.1.5' );
 define( 'WFS_FILE', __FILE__ );
 define( 'WFS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WFS_URL', plugin_dir_url( __FILE__ ) );
 define( 'WFS_GITHUB_REPOSITORY', 'Asenka-Dev-Team/WP-FileShelf' );
 define( 'WFS_STORAGE_DIRNAME', 'wp-fileshelf-uploads' );
-define( 'WFS_UPLOAD_ROUTE', 'wpfileshelf' ); // Default staff upload page slug.
+define( 'WFS_UPLOAD_ROUTE', 'wpfileshelf' );
 
 require_once WFS_PATH . 'includes/class-wfs-db.php';
 require_once WFS_PATH . 'includes/class-wfs-files.php';
@@ -45,6 +45,8 @@ final class WP_FileShelf {
     }
 
     private function __construct() {
+        self::cleanup_v014_options();
+
         WFS_DB::init();
         WFS_Files::init();
         WFS_Router::init();
@@ -57,15 +59,13 @@ final class WP_FileShelf {
     }
 
     public static function activate(): void {
+        self::cleanup_v014_options();
+
         WFS_DB::install();
         WFS_Files::init();
 
         if ( false === get_option( 'wfs_link_slug', false ) ) {
             add_option( 'wfs_link_slug', 'fileshelf', '', false );
-        }
-
-        if ( false === get_option( 'wfs_upload_slug', false ) ) {
-            add_option( 'wfs_upload_slug', WFS_UPLOAD_ROUTE, '', false );
         }
 
         if ( false === get_option( 'wfs_allowed_mime_keys', false ) ) {
@@ -80,7 +80,15 @@ final class WP_FileShelf {
         flush_rewrite_rules();
         update_option( 'wfs_rewrite_version', WFS_VERSION, false );
         update_option( 'wfs_rewrite_slug', WFS_Router::link_slug(), false );
-        update_option( 'wfs_rewrite_upload_slug', WFS_Router::upload_slug(), false );
+    }
+
+    private static function cleanup_v014_options(): void {
+        // v0.1.4 briefly introduced a configurable staff upload route and an
+        // encrypted admin-viewable password copy. v0.1.5 intentionally returns
+        // to the simpler fixed /wpfileshelf/ route and hash-only password model.
+        delete_option( 'wfs_upload_slug' );
+        delete_option( 'wfs_upload_password_cipher' );
+        delete_option( 'wfs_rewrite_upload_slug' );
     }
 
     public static function deactivate(): void {

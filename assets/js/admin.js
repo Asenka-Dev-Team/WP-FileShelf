@@ -268,7 +268,9 @@
             this.type = 'password';
             const id = this.id || '';
             if (!id) return;
-            $form.find('[data-wfs-password-toggle="' + id + '"]').attr('aria-pressed', 'false').text(WFSAdmin.strings.view || 'View');
+            $form.find('[data-wfs-password-toggle="' + id + '"]')
+                .attr('aria-pressed', 'false')
+                .text(WFSAdmin.strings.view || 'View');
         });
     }
 
@@ -319,12 +321,11 @@
     $(document).on('submit', '.wfs-settings-form, .wfs-advanced-form, .wfs-update-check-form', function (event) {
         event.preventDefault();
         const $form = $(this);
+
         if ($form.hasClass('wfs-settings-form')) {
-            // Always return password inputs to their hidden state before the
-            // FormData snapshot is created. This avoids browser/password-manager
-            // oddities when an administrator saves while the password is visible.
             hideSettingsPasswordFields($form);
         }
+
         const formData = new FormData(this);
         const $button = $form.find('button[type="submit"]').first();
         const isUpdate = $form.hasClass('wfs-update-check-form');

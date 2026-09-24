@@ -58,29 +58,29 @@ final class WFS_Frontend {
                     <p><?php esc_html_e( 'A WordPress administrator needs to set the FileShelf upload password first.', 'wp-fileshelf' ); ?></p>
                 </div>
             <?php elseif ( ! $authenticated ) : ?>
-                <form id="wfs-front-login" class="wfs-front-form" autocomplete="off" data-lpignore="true">
+                <form id="wfs-front-login" class="wfs-front-form" autocomplete="off">
                     <input type="hidden" name="action" value="wfs_frontend_login">
                     <input type="hidden" name="nonce" value="<?php echo esc_attr( $nonce ); ?>">
                     <label for="wfs-password"><?php esc_html_e( 'Password', 'wp-fileshelf' ); ?></label>
                     <div class="wfs-front-password-control">
-                        <input id="wfs-password" name="password" type="password" required autofocus autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
+                        <input id="wfs-password" name="password" type="password" required autofocus autocomplete="current-password">
                         <button type="button" class="wfs-front-password-toggle" data-wfs-password-toggle="wfs-password" aria-pressed="false"><?php esc_html_e( 'View', 'wp-fileshelf' ); ?></button>
                     </div>
                     <button type="submit"><?php esc_html_e( 'Continue', 'wp-fileshelf' ); ?></button>
                 </form>
             <?php else : ?>
-                <form id="wfs-front-upload" class="wfs-front-form" enctype="multipart/form-data" autocomplete="off" data-lpignore="true">
+                <form id="wfs-front-upload" class="wfs-front-form" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="wfs_frontend_upload">
                     <input type="hidden" name="nonce" value="<?php echo esc_attr( $nonce ); ?>">
 
                     <label for="wfs-upload-file"><?php esc_html_e( 'File', 'wp-fileshelf' ); ?></label>
-                    <input id="wfs-upload-file" name="file" type="file" required autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
+                    <input id="wfs-upload-file" name="file" type="file" required>
                     <?php if ( '' !== $allowed ) : ?>
                         <p class="wfs-front-help"><?php echo esc_html( sprintf( __( 'Allowed: %s', 'wp-fileshelf' ), $allowed ) ); ?></p>
                     <?php endif; ?>
 
                     <label for="wfs-display-name"><?php esc_html_e( 'Name / Description', 'wp-fileshelf' ); ?></label>
-                    <input id="wfs-display-name" name="display_name" type="text" maxlength="255" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" placeholder="<?php echo esc_attr__( 'Optional internal description', 'wp-fileshelf' ); ?>">
+                    <input id="wfs-display-name" name="display_name" type="text" maxlength="255" placeholder="<?php echo esc_attr__( 'Optional internal description', 'wp-fileshelf' ); ?>">
 
                     <button type="submit"><?php esc_html_e( 'Upload File', 'wp-fileshelf' ); ?></button>
                 </form>
@@ -88,7 +88,7 @@ final class WFS_Frontend {
                 <div id="wfs-upload-result" class="wfs-front-upload-result" hidden>
                     <label for="wfs-upload-result-url"><?php esc_html_e( 'File link', 'wp-fileshelf' ); ?></label>
                     <div class="wfs-front-copy-field">
-                        <input id="wfs-upload-result-url" type="text" readonly value="" autocomplete="off">
+                        <input id="wfs-upload-result-url" type="text" readonly value="">
                         <button id="wfs-upload-copy" type="button" class="wfs-secondary"><?php esc_html_e( 'Copy Link', 'wp-fileshelf' ); ?></button>
                     </div>
                 </div>
@@ -216,122 +216,6 @@ final class WFS_Frontend {
 
     public static function password_is_configured(): bool {
         return '' !== trim( (string) get_option( 'wfs_upload_password_hash', '' ) );
-    }
-
-    /**
-     * Save the shared upload password for verification and, when supported by
-     * the server, keep an encrypted admin-viewable copy. The hash remains the
-     * source used for frontend authentication.
-     */
-    public static function save_password( string $password ): void {
-        update_option( 'wfs_upload_password_hash', wp_hash_password( $password ), false );
-
-        $encrypted = self::encrypt_password( $password );
-        if ( '' !== $encrypted ) {
-            update_option( 'wfs_upload_password_cipher', $encrypted, false );
-        } else {
-            delete_option( 'wfs_upload_password_cipher' );
-        }
-    }
-
-    public static function clear_password(): void {
-        delete_option( 'wfs_upload_password_hash' );
-        delete_option( 'wfs_upload_password_cipher' );
-    }
-
-    public static function viewable_password(): string {
-        $payload = (string) get_option( 'wfs_upload_password_cipher', '' );
-        return '' !== $payload ? self::decrypt_password( $payload ) : '';
-    }
-
-    private static function password_crypto_key(): string {
-        return hash( 'sha256', wp_salt( 'auth' ) . '|wp-fileshelf-upload-password|' . wp_salt( 'secure_auth' ), true );
-    }
-
-    private static function encrypt_password( string $password ): string {
-        if ( '' === $password ) {
-            return '';
-        }
-
-        $key = self::password_crypto_key();
-
-        if ( function_exists( 'sodium_crypto_secretbox' ) && defined( 'SODIUM_CRYPTO_SECRETBOX_NONCEBYTES' ) ) {
-            try {
-                $nonce  = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
-                $cipher = sodium_crypto_secretbox( $password, $nonce, $key );
-                return (string) wp_json_encode(
-                    array(
-                        'v'     => 1,
-                        'alg'   => 'sodium',
-                        'nonce' => base64_encode( $nonce ),
-                        'data'  => base64_encode( $cipher ),
-                    )
-                );
-            } catch ( Throwable $e ) {
-                // Fall through to OpenSSL if available.
-            }
-        }
-
-        if ( function_exists( 'openssl_encrypt' ) ) {
-            try {
-                $iv  = random_bytes( 12 );
-                $tag = '';
-                $cipher = openssl_encrypt( $password, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag, 'wp-fileshelf' );
-                if ( false !== $cipher ) {
-                    return (string) wp_json_encode(
-                        array(
-                            'v'    => 1,
-                            'alg'  => 'aes-256-gcm',
-                            'iv'   => base64_encode( $iv ),
-                            'tag'  => base64_encode( $tag ),
-                            'data' => base64_encode( $cipher ),
-                        )
-                    );
-                }
-            } catch ( Throwable $e ) {
-                return '';
-            }
-        }
-
-        return '';
-    }
-
-    private static function decrypt_password( string $payload ): string {
-        $decoded = json_decode( $payload, true );
-        if ( ! is_array( $decoded ) || empty( $decoded['alg'] ) || empty( $decoded['data'] ) ) {
-            return '';
-        }
-
-        $key  = self::password_crypto_key();
-        $data = base64_decode( (string) $decoded['data'], true );
-        if ( false === $data ) {
-            return '';
-        }
-
-        if ( 'sodium' === $decoded['alg'] && function_exists( 'sodium_crypto_secretbox_open' ) ) {
-            $nonce = isset( $decoded['nonce'] ) ? base64_decode( (string) $decoded['nonce'], true ) : false;
-            if ( false === $nonce ) {
-                return '';
-            }
-            try {
-                $plain = sodium_crypto_secretbox_open( $data, $nonce, $key );
-                return false === $plain ? '' : (string) $plain;
-            } catch ( Throwable $e ) {
-                return '';
-            }
-        }
-
-        if ( 'aes-256-gcm' === $decoded['alg'] && function_exists( 'openssl_decrypt' ) ) {
-            $iv  = isset( $decoded['iv'] ) ? base64_decode( (string) $decoded['iv'], true ) : false;
-            $tag = isset( $decoded['tag'] ) ? base64_decode( (string) $decoded['tag'], true ) : false;
-            if ( false === $iv || false === $tag ) {
-                return '';
-            }
-            $plain = openssl_decrypt( $data, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag, 'wp-fileshelf' );
-            return false === $plain ? '' : (string) $plain;
-        }
-
-        return '';
     }
 
     public static function is_authenticated(): bool {

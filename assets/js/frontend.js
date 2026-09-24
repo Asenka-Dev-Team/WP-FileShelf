@@ -82,7 +82,9 @@
             const original = button.textContent;
             button.textContent = config.strings.copied || 'Copied!';
             window.setTimeout(function () {
-                if (document.body.contains(button)) button.textContent = original || config.strings.copyLink || 'Copy Link';
+                if (document.body.contains(button)) {
+                    button.textContent = original || config.strings.copyLink || 'Copy Link';
+                }
             }, 1200);
         };
 
@@ -137,15 +139,6 @@
     if (loginForm) {
         loginForm.addEventListener('submit', async function (event) {
             event.preventDefault();
-            const passwordInput = loginForm.querySelector('input[name="password"]');
-            const passwordToggle = loginForm.querySelector('[data-wfs-password-toggle]');
-            if (passwordInput && passwordInput.type !== 'password') {
-                passwordInput.type = 'password';
-                if (passwordToggle) {
-                    passwordToggle.setAttribute('aria-pressed', 'false');
-                    passwordToggle.textContent = config.strings.view || 'View';
-                }
-            }
             const button = loginForm.querySelector('button[type="submit"]');
             const data = new FormData(loginForm);
             setButtonBusy(button, true, config.strings.working);

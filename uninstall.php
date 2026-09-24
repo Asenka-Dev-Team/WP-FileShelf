@@ -19,14 +19,14 @@ $options = array(
     'wfs_db_version',
     'wfs_storage_version',
     'wfs_link_slug',
-    'wfs_upload_slug',
+    'wfs_upload_slug', // Legacy v0.1.4 option.
     'wfs_allowed_mime_keys',
     'wfs_delete_on_uninstall',
     'wfs_upload_password_hash',
-    'wfs_upload_password_cipher',
+    'wfs_upload_password_cipher', // Legacy v0.1.4 option.
     'wfs_rewrite_version',
     'wfs_rewrite_slug',
-    'wfs_rewrite_upload_slug',
+    'wfs_rewrite_upload_slug', // Legacy v0.1.4 option.
 );
 
 foreach ( $options as $option ) {

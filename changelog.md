@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.5
+
+- Simplified the staff upload configuration by restoring the fixed `/wpfileshelf/` route.
+- Removed the v0.1.4 configurable staff upload path and encrypted admin-viewable password copy.
+- Preserved the existing upload password hash, public file-link setting, files, and metadata when upgrading.
+- Added automatic cleanup of the obsolete v0.1.4 upload-route and password-cipher options.
+- Kept the admin **View / Hide** control and now returns the password field to hidden mode before Settings are saved.
+- Added an **Open Page** button beside the staff upload URL.
+- Kept the frontend post-upload result with the public file URL and **Copy Link** button.
+- Restored the simpler hash-only password model and standard browser field behavior.
+
 ## 0.1.4
 
 - Added a configurable staff upload page path, with `wpfileshelf` as the default.
