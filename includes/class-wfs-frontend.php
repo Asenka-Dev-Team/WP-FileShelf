@@ -22,6 +22,9 @@ final class WFS_Frontend {
     public static function render_page(): void {
         status_header( 200 );
         nocache_headers();
+        header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private', true );
+        header( 'Pragma: no-cache', true );
+        header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT', true );
 
         $configured    = self::password_is_configured();
         $authenticated = $configured && self::is_authenticated();
@@ -58,18 +61,18 @@ final class WFS_Frontend {
                     <p><?php esc_html_e( 'A WordPress administrator needs to set the FileShelf upload password first.', 'wp-fileshelf' ); ?></p>
                 </div>
             <?php elseif ( ! $authenticated ) : ?>
-                <form id="wfs-front-login" class="wfs-front-form" autocomplete="off">
+                <form id="wfs-front-login" class="wfs-front-form" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
                     <input type="hidden" name="action" value="wfs_frontend_login">
                     <input type="hidden" name="nonce" value="<?php echo esc_attr( $nonce ); ?>">
                     <label for="wfs-password"><?php esc_html_e( 'Password', 'wp-fileshelf' ); ?></label>
                     <div class="wfs-front-password-control">
-                        <input id="wfs-password" name="password" type="password" required autofocus autocomplete="current-password">
+                        <input id="wfs-password" name="password" type="password" required autofocus autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
                         <button type="button" class="wfs-front-password-toggle" data-wfs-password-toggle="wfs-password" aria-pressed="false"><?php esc_html_e( 'View', 'wp-fileshelf' ); ?></button>
                     </div>
                     <button type="submit"><?php esc_html_e( 'Continue', 'wp-fileshelf' ); ?></button>
                 </form>
             <?php else : ?>
-                <form id="wfs-front-upload" class="wfs-front-form" enctype="multipart/form-data">
+                <form id="wfs-front-upload" class="wfs-front-form" enctype="multipart/form-data" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
                     <input type="hidden" name="action" value="wfs_frontend_upload">
                     <input type="hidden" name="nonce" value="<?php echo esc_attr( $nonce ); ?>">
 
@@ -80,7 +83,7 @@ final class WFS_Frontend {
                     <?php endif; ?>
 
                     <label for="wfs-display-name"><?php esc_html_e( 'Name / Description', 'wp-fileshelf' ); ?></label>
-                    <input id="wfs-display-name" name="display_name" type="text" maxlength="255" placeholder="<?php echo esc_attr__( 'Optional internal description', 'wp-fileshelf' ); ?>">
+                    <input id="wfs-display-name" name="display_name" type="text" maxlength="255" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" placeholder="<?php echo esc_attr__( 'Optional internal description', 'wp-fileshelf' ); ?>">
 
                     <button type="submit"><?php esc_html_e( 'Upload File', 'wp-fileshelf' ); ?></button>
                 </form>
@@ -88,7 +91,7 @@ final class WFS_Frontend {
                 <div id="wfs-upload-result" class="wfs-front-upload-result" hidden>
                     <label for="wfs-upload-result-url"><?php esc_html_e( 'File link', 'wp-fileshelf' ); ?></label>
                     <div class="wfs-front-copy-field">
-                        <input id="wfs-upload-result-url" type="text" readonly value="">
+                        <input id="wfs-upload-result-url" type="text" readonly value="" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
                         <button id="wfs-upload-copy" type="button" class="wfs-secondary"><?php esc_html_e( 'Copy Link', 'wp-fileshelf' ); ?></button>
                     </div>
                 </div>

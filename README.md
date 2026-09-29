@@ -72,11 +72,17 @@ https://example.com/wpfileshelf/
 
 It is locked until an administrator sets an upload password under **WP FileShelf → Settings**.
 
-Anyone who has the URL and password can upload the file types enabled under **Advanced**. A successful login creates a signed HttpOnly session cookie for up to eight hours.
+Anyone who has the URL and password can upload the file types enabled under **Advanced**. A successful login creates a signed HttpOnly session cookie for up to eight hours. The staff upload route is explicitly marked non-cacheable so full-page caching cannot reuse logged-in or logged-out HTML across session changes.
 
-Both the WordPress admin password field and the front-end login field include **View / Hide** controls while a password is being typed. Saved passwords are hashed by WordPress and are never stored in a recoverable form, so an existing saved password cannot be displayed later. The Settings screen also includes **Copy** and **Open Page** controls for the fixed staff upload URL.
+Both the WordPress admin password field and the front-end login field include **View / Hide** controls while a password is being typed. The front-end staff forms also disable normal browser autocomplete and include ignore hints for LastPass, 1Password, and Bitwarden. Saved passwords are hashed by WordPress and are never stored in a recoverable form, so an existing saved password cannot be displayed later. The Settings screen also includes **Copy** and **Open Page** controls for the fixed staff upload URL.
 
 After a successful staff upload or replacement, the page shows the resulting public file URL with a **Copy Link** button.
+
+### Cache compatibility
+
+`/wpfileshelf/` contains session-specific HTML and should never be full-page cached. FileShelf marks the route with the standard `DONOTCACHEPAGE` convention, sends no-store/no-cache response headers, and uses LiteSpeed Cache and WP Rocket compatibility hooks when those plugins are present. Login and logout reloads also use a one-time cache-busting query value, which is removed from the address bar after the fresh page loads.
+
+When upgrading to v0.1.6, FileShelf attempts to purge any existing cached copy of the staff upload URL through supported cache-plugin APIs. If a host/CDN keeps a cache outside WordPress, excluding `/wpfileshelf/` from that cache remains recommended.
 
 ### Duplicate filenames
 
@@ -193,7 +199,7 @@ For a normal release:
 1. Update the plugin version in `wp-fileshelf.php`.
 2. Update `changelog.md`.
 3. Commit and push the release code.
-4. Create a Git tag such as `v0.1.5`.
+4. Create a Git tag such as `v0.1.6`.
 5. Publish a normal GitHub Release for that tag.
 
 WP FileShelf's updater ignores draft and prerelease releases.

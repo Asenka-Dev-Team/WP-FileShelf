@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.6
+
+- Fixed unreliable staff upload login/logout state caused by full-page caching of `/wpfileshelf/`.
+- Marked the staff upload route with `DONOTCACHEPAGE` as early as normal plugin loading allows.
+- Added explicit no-store/no-cache response headers for the staff upload page.
+- Added LiteSpeed Cache no-cache integration and URL purge support.
+- Added WP Rocket never-cache URI/cookie integration and URL purge support.
+- Added W3 Total Cache URL purge support when available.
+- Added a one-time cache-busting reload after login/logout, then removes the temporary query parameter from the address bar.
+- Added `cache: no-store` to frontend AJAX requests.
+- Disabled browser autocomplete on the frontend staff forms and added LastPass, 1Password, and Bitwarden ignore attributes.
+- Kept the existing signed-cookie authentication, upload workflow, public links, and file storage behavior unchanged.
+
 ## 0.1.5
 
 - Simplified the staff upload configuration by restoring the fixed `/wpfileshelf/` route.

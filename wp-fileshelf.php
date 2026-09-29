@@ -3,7 +3,7 @@
  * Plugin Name: WP FileShelf
  * Plugin URI: https://asenka.com/
  * Description: Manage a private staff-uploaded file shelf with stable public file URLs outside the WordPress Media Library.
- * Version: 0.1.5
+ * Version: 0.1.6
  * Author: Asenka Interactive
  * Author URI: https://asenka.com/
  * Text Domain: wp-fileshelf
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'WFS_VERSION', '0.1.5' );
+define( 'WFS_VERSION', '0.1.6' );
 define( 'WFS_FILE', __FILE__ );
 define( 'WFS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WFS_URL', plugin_dir_url( __FILE__ ) );
@@ -29,6 +29,11 @@ define( 'WFS_UPLOAD_ROUTE', 'wpfileshelf' );
 require_once WFS_PATH . 'includes/class-wfs-db.php';
 require_once WFS_PATH . 'includes/class-wfs-files.php';
 require_once WFS_PATH . 'includes/class-wfs-router.php';
+
+// Register cache exclusions as early as an ordinary plugin can. This is
+// intentionally done before plugins_loaded so cache plugins that inspect the
+// current request later in WordPress bootstrap can see the FileShelf policy.
+WFS_Router::bootstrap_cache_exclusions();
 require_once WFS_PATH . 'includes/class-wfs-frontend.php';
 require_once WFS_PATH . 'includes/class-wfs-updater.php';
 require_once WFS_PATH . 'includes/class-wfs-admin.php';

@@ -14,6 +14,29 @@
     const uploadCopyButton = document.getElementById('wfs-upload-copy');
     let pendingUploadForm = null;
 
+    function cleanRefreshParameter() {
+        try {
+            const url = new URL(window.location.href);
+            if (!url.searchParams.has('wfs_refresh')) return;
+            url.searchParams.delete('wfs_refresh');
+            window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+        } catch (error) {
+            // URL/history support is expected in modern browsers; no action needed otherwise.
+        }
+    }
+
+    function reloadFresh() {
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('wfs_refresh', String(Date.now()));
+            window.location.replace(url.toString());
+        } catch (error) {
+            window.location.reload();
+        }
+    }
+
+    cleanRefreshParameter();
+
     document.querySelectorAll('[data-wfs-password-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
             const targetId = button.getAttribute('data-wfs-password-toggle') || '';
@@ -52,6 +75,7 @@
         const response = await fetch(config.ajaxUrl, {
             method: 'POST',
             credentials: 'same-origin',
+            cache: 'no-store',
             body: formData
         });
 
@@ -144,7 +168,7 @@
             setButtonBusy(button, true, config.strings.working);
             try {
                 await postForm(data);
-                window.location.reload();
+                reloadFresh();
             } catch (error) {
                 showNotice(error.message, 'error');
                 setButtonBusy(button, false);
@@ -217,7 +241,7 @@
             setButtonBusy(logoutButton, true, config.strings.working);
             try {
                 await postForm(data);
-                window.location.reload();
+                reloadFresh();
             } catch (error) {
                 showNotice(error.message, 'error');
                 setButtonBusy(logoutButton, false);
